@@ -1,0 +1,202 @@
+{
+  "loadCheck": {
+    "title": "شبیه‌ساز سه‌بعدی و دیاگرام تک‌خطی سامانه خورشیدی هایبرید ۵ کیلووات | IEC 60364-7-712",
+    "canvasPresent": true,
+    "canvasWidth": 1904,
+    "canvasHeight": 985,
+    "hasSceneInstance": true,
+    "sceneChildrenCount": 62,
+    "glRenderer": "unknown"
+  },
+  "gridBadge": {
+    "hudGridP": "+2200",
+    "hudGridUnit": "وات (تبادل)"
+  },
+  "socInitial": {
+    "hudSoc": "75%",
+    "sliderVal": "75",
+    "labelVal": "75%"
+  },
+  "socAfter10s": {
+    "hudSoc": "75%",
+    "sliderVal": "75",
+    "labelVal": "75%"
+  },
+  "frontViewClick": {
+    "clicked": true,
+    "error": null
+  },
+  "sbyClick": {
+    "before": {
+      "switchgearSby": "I"
+    },
+    "after": {}
+  },
+  "rcdToggle": {
+    "before": {
+      "hudEpsP": "0",
+      "epsTelemetry": {}
+    },
+    "after": {
+      "hudEpsP": "0",
+      "epsTelemetry": {}
+    }
+  },
+  "filterClick": [
+    {
+      "filter": "all",
+      "particlesCount": 10
+    },
+    {
+      "filter": "pv",
+      "particlesCount": 10
+    },
+    {
+      "filter": "bat",
+      "particlesCount": 10
+    },
+    {
+      "filter": "inv",
+      "particlesCount": 10
+    },
+    {
+      "filter": "grid",
+      "particlesCount": 10
+    },
+    {
+      "filter": "loads",
+      "particlesCount": 10
+    },
+    {
+      "filter": "eps",
+      "particlesCount": 10
+    },
+    {
+      "filter": "earth",
+      "particlesCount": 10
+    }
+  ],
+  "networkRequests": [
+    "https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/fonts/webfonts/Vazirmatn-Regular.woff2",
+    "https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/fonts/webfonts/Vazirmatn-ExtraBold.woff2",
+    "https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/fonts/webfonts/Vazirmatn-SemiBold.woff2",
+    "https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/fonts/webfonts/Vazirmatn-Bold.woff2"
+  ],
+  "consoleLogs": [
+    {
+      "source": "console-api",
+      "level": "log",
+      "text": "3D Scene successfully initialized by App Orchestrator.",
+      "url": "file:///C:/Users/11/Desktop/PC/shahrivar/solar-app/APP/17/js/app.js",
+      "line": 2041,
+      "column": 19
+    },
+    {
+      "type": "log",
+      "text": "3D Scene successfully initialized by App Orchestrator."
+    },
+    {
+      "source": "console-api",
+      "level": "log",
+      "text": "5kW Hybrid PV Persian UI & Orchestrator successfully initialized.",
+      "url": "file:///C:/Users/11/Desktop/PC/shahrivar/solar-app/APP/17/js/app.js",
+      "line": 2150,
+      "column": 13
+    },
+    {
+      "type": "log",
+      "text": "5kW Hybrid PV Persian UI & Orchestrator successfully initialized."
+    },
+    {
+      "source": "console-api",
+      "level": "warning",
+      "text": "[HybridSolar3DScene] Unknown camera preset: null",
+      "url": "file:///C:/Users/11/Desktop/PC/shahrivar/solar-app/APP/17/js/scene-3d.js",
+      "line": 3964,
+      "column": 15
+    },
+    {
+      "type": "warning",
+      "text": "[HybridSolar3DScene] Unknown camera preset: null"
+    },
+    {
+      "source": "console-api",
+      "level": "warning",
+      "text": "[HybridSolar3DScene] Unknown camera preset: null",
+      "url": "file:///C:/Users/11/Desktop/PC/shahrivar/solar-app/APP/17/js/scene-3d.js",
+      "line": 3964,
+      "column": 15
+    },
+    {
+      "type": "warning",
+      "text": "[HybridSolar3DScene] Unknown camera preset: null"
+    },
+    {
+      "source": "console-api",
+      "level": "warning",
+      "text": "[HybridSolar3DScene] Unknown camera preset: null",
+      "url": "file:///C:/Users/11/Desktop/PC/shahrivar/solar-app/APP/17/js/scene-3d.js",
+      "line": 3964,
+      "column": 15
+    },
+    {
+      "type": "warning",
+      "text": "[HybridSolar3DScene] Unknown camera preset: null"
+    },
+    {
+      "source": "console-api",
+      "level": "warning",
+      "text": "[HybridSolar3DScene] Unknown camera preset: null",
+      "url": "file:///C:/Users/11/Desktop/PC/shahrivar/solar-app/APP/17/js/scene-3d.js",
+      "line": 3964,
+      "column": 15
+    },
+    {
+      "type": "warning",
+      "text": "[HybridSolar3DScene] Unknown camera preset: null"
+    }
+  ],
+  "exceptions": [
+    {
+      "exceptionId": 1,
+      "text": "Uncaught TypeError: this._animateCamera is not a function",
+      "lineNumber": 3800,
+      "columnNumber": 9,
+      "scriptId": "5",
+      "url": "file:///C:/Users/11/Desktop/PC/shahrivar/solar-app/APP/17/js/scene-3d.js",
+      "stackTrace": {
+        "callFrames": [
+          {
+            "functionName": "setCameraFrontView",
+            "scriptId": "5",
+            "url": "file:///C:/Users/11/Desktop/PC/shahrivar/solar-app/APP/17/js/scene-3d.js",
+            "lineNumber": 3800,
+            "columnNumber": 9
+          },
+          {
+            "functionName": "",
+            "scriptId": "12",
+            "url": "file:///C:/Users/11/Desktop/PC/shahrivar/solar-app/APP/17/js/app.js",
+            "lineNumber": 2106,
+            "columnNumber": 50
+          },
+          {
+            "functionName": "",
+            "scriptId": "16",
+            "url": "",
+            "lineNumber": 3,
+            "columnNumber": 16
+          },
+          {
+            "functionName": "",
+            "scriptId": "16",
+            "url": "",
+            "lineNumber": 8,
+            "columnNumber": 10
+          }
+        ]
+      },
+      "executionContextId": 1
+    }
+  ]
+}
