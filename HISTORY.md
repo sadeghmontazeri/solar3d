@@ -770,4 +770,90 @@ callback. The second is the one that needs a deliberate test: press I, then II, 
 second, and confirm the final state is **0**.
 
 ---
+
+---
+
+## 2026-09-13T15:48:00-04:00 — agent: `claude-opus-5` (Claude Code) — Review Gate 4 (Step 6) verdict — `APPROVED` — **Phase 2 complete**
+
+**Reviewed:** `work.md` Step 6. Commit `316c7c1`. `origin/main` == local `HEAD`, tree clean.
+
+### Verified
+
+| Check | Result |
+|---|---|
+| `setSbyPosition3D` guard | correctly placed — after the `sw` lookup, **before** `sw.state = pos`, so corruption is impossible |
+| Generation counter | `++sbyTransferGeneration` sits **before** `if (oldPos === pos) return;` — see below, this ordering is what makes it work |
+| Callback guard | first line of the 80 ms `setTimeout` |
+| Diff scope | **3 lines** in `app.js`, **4** in `scene-3d.js`, plus a verify script. Nothing else touched |
+| Bundle rebuilt | both fixes present; still 0 external references |
+| Power model | all 7 golden scenarios pass |
+
+### The ordering detail that decides whether this works
+
+The fix only functions because the increment precedes the `oldPos === pos` early return. Walk
+the specified sequence:
+
+```
+start 'I'
+click II  -> BBM path: state := '0', generation := 1, timer(80ms) armed to set 'II'
+click 0   -> oldPos is now '0' and pos is '0', so the function early-returns …
+             but the increment already ran, so generation := 2
+timer      -> myGeneration(1) !== generation(2)  ->  return.  State stays '0'.
+```
+
+Had the increment been placed after the early return, the click on `0` would never have bumped
+the counter and the stale callback would still have set `'II'`. The implementation is correct.
+
+### The test discriminates — confirmed independently
+
+A test that passes both before and after a fix proves nothing, so I simulated the handler both
+ways against the exact sequence used:
+
+```
+WITHOUT fix : final sbyPosition = "II"   *** snaps back — the bug ***
+WITH fix    : final sbyPosition = "0"    correct
+```
+
+The test genuinely fails on the old code. Their PASS is real evidence.
+
+Their probe reads `sceneInstance.switchgear['sby_switch'].state` rather than `state.sbyPosition`
+(which is not exposed on `window`). That is a proxy, but a sound one: the only writer of that
+field on this path is the stale callback itself, so `'0'` surviving proves the callback did not
+run. Acceptable.
+
+### Note — interim behaviour, superseded later
+
+Clicking the SBY dial in the 3D scene now logs a warning and does nothing, because the click
+path still calls `toggleBreaker3D('sby_switch')` with no position. That is the correct interim
+outcome — refusing an invalid command beats corrupting state — and **Step 9** replaces it
+properly, when a click selects and an explicit action operates.
+
+### Phase 2 complete
+
+| ID | Defect | Status |
+|---|---|---|
+| V1 | `setCameraFrontView` TypeError | **closed** (Step 5) |
+| V11 | `Unknown camera preset: null` | **closed** (Step 5) |
+| V2 | SBY state corrupted to `undefined` | **closed** (Step 6) |
+| V10 | SBY stale-callback race | **closed** (Step 6) |
+| V12 | viewpoint highlight stolen by 6 buttons | open — cosmetic, folded into Step 14 |
+
+### Verdict
+
+Step 6 **approved**. Review Gate 4 passed; Phase 2 is done.
+
+Proceed to **Phase 3, Step 7** — the BUS-G node balance. This is the highest-care step in the
+plan. The patch text is pre-validated, but note:
+
+- **P2 (QG open → 2200 W) and P7 (grid dead → 0 W) are regression guards.** If either moves, the
+  fix is wrong — stop and report rather than adjusting expectations.
+- Use `inverterEpsDemand`, **not** `epsPower`. In bypass the grid feeds the critical load
+  directly via `bypassPower` and the inverter serves nothing; using `epsPower` would
+  double-subtract.
+- The `after` targets were recomputed from the real model after my original hand-arithmetic was
+  found wrong in Step 2: P1 0, P2 2200, P3 3700, **P4 −4951**, **P5 0**, P6 4700, P7 0.
+- Step 7 also clears the stale hardcoded `-720` first-paint value for `#hud-grid-p` in
+  `index.html`.
+
+---
 <!-- Next agent: append below this line. Do not modify anything above it. -->
