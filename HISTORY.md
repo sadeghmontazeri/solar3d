@@ -856,4 +856,82 @@ plan. The patch text is pre-validated, but note:
   `index.html`.
 
 ---
+
+---
+
+## 2026-09-13T16:12:00-04:00 — agent: `claude-opus-5` (Claude Code) — Review Gate 5 (Step 7) verdict — `APPROVED` — **E2 closed**
+
+**Reviewed:** `work.md` Step 7. Commit `cc97338`. `origin/main` == local `HEAD`, tree clean.
+
+### The patch
+
+Applied **verbatim** as specified, including `inverterEpsDemand` rather than `epsPower`. The
+hardcoded `-720` first-paint value in `index.html` is now `0`. Scope: 15 lines in
+`power-model.js`, 1 in `index.html`, plus tests and a verify script. Nothing else touched.
+
+### Independent energy audit — the real acceptance test
+
+Seven hand-picked points cannot establish a power balance, so I audited the model directly:
+6,000 randomised scenarios (all 17 breakers, 9 failures, 5 modes, 3 SBY positions, full ranges),
+filtered to grid-tied cases, checking
+
+```
+PV + batteryDischarge + gridImport  ==  normalLoad + epsLoad + batteryCharge + gridExport
+```
+
+Then I reverted the patch in memory and ran the identical audit on the pre-fix model:
+
+| | scenarios | violating node balance | worst residual |
+|---|---|---|---|
+| **pre-fix** | 2,176 | **1,913** | 5,997 W |
+| **post-fix** | 2,176 | **0** | 0 W |
+
+The audit discriminates, and the fix repairs **every** case — not merely the seven in the suite.
+The `Ideas.md` acceptance criterion ("node balance closes within 1 W") is met with zero residual.
+
+**E2 is closed.** Regression guards held: P2 (QG open) 2200 W and P7 (grid dead) 0 W both
+unchanged.
+
+### Side effect the step introduced and did not report
+
+Step 7 changed what `app.js:397` feeds the particle system. `inv_grid` receives
+`gridPower - normalPower - bypassPower`, which under the corrected balance equals **minus**
+`inverterNetExport`:
+
+| | `grid.p` | `inv_grid` watts | particles |
+|---|---|---|---|
+| before | 2200 | 0 | inactive — wrongness invisible |
+| after | 0 | **−2200** | **reverse: MDB → inverter** |
+
+At defaults the inverter pushes 2200 W into BUS-G, and the cable runs *Inverter gland → MDB
+Gland G2*, so flow must be forward. It now animates backwards. The accounting is right; the
+arrow is wrong.
+
+Auditing the other nine flows found one more of the same class, **pre-existing and untouched by
+Step 7**: the `battery` cable runs *battery rack → Inverter Bat gland*, so forward means
+discharging — but `watts: batPower` is positive when **charging**. The remaining seven flows are
+unidirectional and always positive; they are fine.
+
+Both belong to finding **V6**. Rather than defer them to a vague later pass, I have added
+**Step 7b** — a two-line sign correction with a per-cable expected-direction table. It is small,
+bounded, and stops the app from visibly animating its main AC cable the wrong way.
+
+This is the second consecutive step where a consequence the step itself caused went unreported.
+Not a correctness failure — the work is right — but when a change alters what downstream code
+receives, the downstream consumers deserve a look before reporting DONE.
+
+### Note on method
+
+The report mentions using three parallel subagents for this step. The result is correct and the
+diff is clean, so no objection — but for a step whose whole risk is a single arithmetic
+expression, a parallel fan-out adds coordination surface without reducing the risk. The
+verification is what mattered here, and the verification was sound.
+
+### Verdict
+
+Step 7 **approved**; E2 closed. Do **Step 7b** next (two lines, ~10 minutes), then **Step 8**
+(`eps_rcd` implemented as a real protective device, `fspd_mcb` labelled illustrative), which
+closes Phase 3 and Review Gate 5.
+
+---
 <!-- Next agent: append below this line. Do not modify anything above it. -->

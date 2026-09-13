@@ -690,6 +690,62 @@ contradict the engine. Leave the other badges alone for now.
 
 ---
 
+#### Step 7b — Correct two inverted particle-flow signs ⚠️ **added after review of Step 7**
+
+**Why:** Step 7's accounting fix is correct, but it changed what `app.js:397` feeds the 3D
+particle system. Two cables now animate in the wrong direction.
+
+`app.js` sends `inv_grid` the value `gridPower - normalPower - bypassPower`. With the corrected
+balance that expression equals **minus** `inverterNetExport`:
+
+| | `grid.p` | `inv_grid` watts | particles |
+|---|---|---|---|
+| before Step 7 | 2200 | 0 | inactive — wrongness invisible |
+| after Step 7 | 0 | **−2200** | **reverse: MDB → inverter** |
+
+At default settings PV 4570 W serves EPS 1500 W, charges 870 W, and pushes 2200 W into BUS-G for
+the normal loads. The cable runs *Inverter Grid gland → MDB Gland G2*, so flow must be
+**forward**. It currently runs backwards.
+
+The `battery` cable has the same class of error, pre-existing and unchanged by Step 7: it runs
+*battery rack → Inverter Bat gland*, so forward means **discharging** — but `watts: batPower` is
+**positive when charging**. Charging therefore animates battery → inverter, which is backwards.
+
+Both are part of finding **V6**. The other seven flows are unidirectional and always positive;
+leave them alone.
+
+**Do:** in `js/app.js`, in the `updatePowerFlows` call (~line 393–403), change exactly two lines.
+
+`inv_grid` — negate the expression so positive means "inverter exporting into BUS-G":
+```js
+          inv_grid: { active: invGridActive, watts: inverterGridAvailable ? (normalPower + bypassPower - gridPower) : 0 },
+```
+
+`battery` — negate so positive means "discharging toward the inverter":
+```js
+          battery: { active: batActive, watts: -batPower },
+```
+
+Change nothing else. Do **not** touch `invGridActive` or `batActive` — the `Math.abs(...)`
+activity tests are already correct.
+
+**Verify** (read `watts` per cable; add a temporary console log or read
+`sceneInstance.animatedParticles` and report the `direction` field):
+
+| scenario | cable | expected watts | expected direction |
+|---|---|---|---|
+| defaults | `inv_grid` | **+2200** | forward, inverter → MDB |
+| defaults (charging 870) | `battery` | **−870** | reverse, inverter → battery |
+| evening_peak (discharging 3700) | `battery` | **+3700** | forward, battery → inverter |
+| QG open | `inv_grid` | **0** | inactive |
+
+Then rebuild and confirm in the browser that particles on the inverter-to-MDB cable travel
+**away from the inverter** at default settings.
+
+**Commit:** `step-7b: correct inv_grid and battery flow signs`
+
+---
+
 #### Step 8 — Make dead switches honest
 
 **Goal:** `eps_rcd` and `fspd_mcb` are declared in `state.breakers`, appear in the UI, and are
