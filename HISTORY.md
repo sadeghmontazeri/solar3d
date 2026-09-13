@@ -710,4 +710,64 @@ implement `_animateCamera` **and** guard the six non-viewpoint `.btn-viewpoint` 
 the crash fix alone will not silence the `Unknown camera preset: null` warning.
 
 ---
+
+---
+
+## 2026-09-13T15:28:00-04:00 — agent: `claude-opus-5` (Claude Code) — Review Gate 4 (Step 5) verdict — `APPROVED`
+
+**Reviewed:** `work.md` Step 5. Commit `ba55dad`. `origin/main` == local `HEAD`, tree clean.
+
+### Verified
+
+| Check | Result |
+|---|---|
+| `_animateCamera` implementation | **verbatim match** to the specified patch; reuses the existing `cameraTransition` machinery, no new state |
+| Guard placement | exactly as specified — one line, immediately after `getAttribute` |
+| Diff scope | 1 line in `app.js`, 18 in `scene-3d.js`, plus a verification script and `work.md`. **Nothing else touched** |
+| Camera actually moves | their live run shows position reaching `{0.5, 2.3, 4.2}`, not merely a transition flag being set |
+| V11 warning | `Unknown camera preset` count **0** across Front View, the other five buttons, and a real preset |
+| Exceptions | 0 |
+| Real presets still work | PV viewpoint flies to `{0, 7, 3.8}` — no regression |
+| Bundle rebuilt | both fixes present in `dist/solar-app.html`; still 0 `jsdelivr` references |
+| Power model | all 7 golden scenarios still pass |
+
+Two defects closed: **V1** (`setCameraFrontView` TypeError) and **V11** (null-preset warning).
+
+### New finding — V12, cosmetic, pre-existing
+
+`PLAN.md` Step 5 anticipated this and asked for it to be reported if it materialised. It did, and
+it was not reported.
+
+The click handler clears `active` from every `.btn-viewpoint` and sets it on the clicked button
+**before** reading `data-viewpoint`; the guard returns after. Confirmed structurally: **11**
+buttons carry `.btn-viewpoint` with `data-viewpoint`, **6** carry it without
+(`btn-camera-front`, `btn-camera-reset`, `btn-toggle-enclosure-shell`, and the three door
+buttons). `.btn-viewpoint.active` is amber (`styles.css:543`). So opening a cabinet door or
+pressing Front View un-highlights the genuine current viewpoint and highlights itself.
+
+**Not introduced by Step 5** — the guard sits after that block exactly as instructed, and the
+behaviour predates it. Severity cosmetic; no functional impact. The real fix is structural (stop
+sharing the class), which touches CSS and the button taxonomy, so it is **folded into Step 14**
+where these controls are reorganised anyway. The Step 5 guard becomes redundant at that point,
+but only once the selector is narrowed.
+
+Recorded as **V12** in `Ideas.md`.
+
+### Process note for the implementing agent
+
+The work itself is accurate and the verification was well constructed — testing all six buttons
+plus a real preset, and reading the camera's final position rather than trusting the transition
+flag, is more thorough than the step required. The one gap is that the step named a specific
+risk to watch for and it went unreported. When a step says *"report if X happens"*, X is worth
+an explicit line in `work.md` either way — "checked, did not occur" is as useful as "occurred".
+
+### Verdict
+
+Step 5 **approved**. Proceed to **Step 6** — SBY input validation plus transfer cancellation.
+Note that Step 6 has two independent parts: the `['I','0','II']` guard in
+`setSbyPosition3D`, and the generation counter that invalidates a stale 80 ms `setTimeout`
+callback. The second is the one that needs a deliberate test: press I, then II, then 0 within one
+second, and confirm the final state is **0**.
+
+---
 <!-- Next agent: append below this line. Do not modify anything above it. -->

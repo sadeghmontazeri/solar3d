@@ -875,6 +875,14 @@ a drawer that is **closed by default**, with three sections: *Scenario* (sliders
 duplicate the viewpoint buttons. Keep Home / Focus / open-cabinet as **visible buttons**;
 keyboard shortcuts are additions, not replacements.
 
+**Also fix V12 here.** Six buttons — `btn-camera-front`, `btn-camera-reset`,
+`btn-toggle-enclosure-shell`, `btn-toggle-dc-door`, `btn-toggle-mdb-door`, `btn-toggle-eps-door` —
+share the `.btn-viewpoint` class without being viewpoints, so clicking one steals the amber
+`.active` highlight from the real current viewpoint. Give them their own class (e.g.
+`.btn-sceneaction`) with its own styling, and narrow the `camButtons` selector to genuine
+viewpoints. The Step 5 guard can then be removed as redundant — but only once the selector
+is narrowed, not before.
+
 **Verify:** at 1920×1080 the 3D view occupies ≥ 80 % of the viewport with the drawer closed.
 At 1366×768 all core controls remain reachable. At 200 % browser zoom nothing becomes
 unreachable.
