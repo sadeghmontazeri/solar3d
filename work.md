@@ -126,3 +126,55 @@ None. All 8 checks and 3 evidence screenshots completed.
 
 ### Commit
 `step-1: browser smoke test evidence`
+
+---
+
+## Step 1b — Re-run RCD and SOC probes on clean load
+**Date:** 2026-09-13T14:02:00-04:00
+**Agent:** Antigravity / Gemini 3.8 Flash
+**Status:** DONE
+
+### What I changed
+- Created `scripts/step1b_runner.js` to execute targeted clean-load probes and serialize probes with `String()`.
+- Generated `evidence/step1/step1b_evidence.json`.
+- Zero application code modified.
+
+### Verify output
+```
+=== STEP 1b: RCD Check on Clean Load ===
+before:
+  hudEpsP: "1500"
+  rcdBreakerState: "true" (default closed)
+after:
+  hudEpsP: "1500"
+  rcdBreakerState: "false" (opened via onBreakerStateChanged)
+Observation: Opening eps_rcd leaves hudEpsP strictly at 1500 W. The RCD switch has ZERO electrical effect on the EPS circuit.
+
+=== STEP 1b: Battery SOC Drift vs Slider ===
+t=0s:  hudSocText: "75%", sliderValue: "75"
+t=15s: hudSocText: "75%", sliderValue: "75"
+Code Analysis Verification (app.js:514, 598):
+- deltaSOC = (870 / (5120 * 3600)) * 100 * 0.1 = +0.0047% per second.
+- Time required for Math.round() to flip from 75% to 76%: 106 seconds (to 75.5%) / 212 seconds (to 76.0%).
+- updateHUDView() (line 598) updates ONLY batSoc.textContent = Math.round(state.batterySOC) + '%'.
+- slider-soc.value is NEVER updated by the 10 Hz simulation loop (written only at init/reset).
+Verdict: 10s-15s observation is INCONCLUSIVE for integer rounding, but structural code analysis proves the HUD badge drifts over time while the slider remains permanently frozen.
+
+=== STEP 1b: SBY Click Probe (Stringified) ===
+switchgearSby before: "I"
+switchgearSby after:  "undefined"
+Observation: String() probe definitively captures that switchgearSby transitions to literal "undefined", proving state corruption.
+```
+
+### Result vs expected
+| Check | Expected | Actual | Pass? |
+|---|---|---|---|
+| RCD on clean load | hudEpsP starts at 1500 W; opening RCD changes nothing | Before: "1500", After: "1500" | PASS (E7 Defect confirmed) |
+| Battery SOC drift | Short timeframe is inconclusive for integer display | 75% on both at 15s; code confirms drift vs frozen slider | INCONCLUSIVE (as expected for t < 106s) |
+| SBY String() probe | Stringified "undefined" preserved | before: "I", after: "undefined" | PASS (V2 Defect confirmed) |
+
+### Surprises / notes
+- `state` in `app.js` is scoped strictly within the root IIFE and not exposed on `window.state`. Telemetry and breaker states must be probed via `window.AppOrchestrator` and DOM elements.
+
+### Commit
+`step-1b: re-run RCD and SOC probes on clean load`

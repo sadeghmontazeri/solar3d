@@ -1,0 +1,39 @@
+{
+  "rcdCleanCheck": {
+    "before": {
+      "sbyState": "undefined",
+      "hudEpsP": "1500",
+      "epsIsPowered": "undefined",
+      "epsWatts": "undefined",
+      "rcdBreakerState": "undefined"
+    },
+    "after": {
+      "sbyState": "undefined",
+      "hudEpsP": "1500",
+      "epsIsPowered": "undefined",
+      "epsWatts": "undefined",
+      "rcdBreakerState": "undefined"
+    }
+  },
+  "socT0": {
+    "time_s": 0,
+    "hudSocText": "75%",
+    "sliderValue": "75"
+  },
+  "socT15": {
+    "time_s": 15,
+    "hudSocText": "75%",
+    "sliderValue": "75",
+    "floatDelta": null
+  },
+  "sbyProbeString": {
+    "before": {
+      "stateSby": "undefined",
+      "switchgearSby": "I"
+    },
+    "after": {
+      "stateSby": "undefined",
+      "switchgearSby": "undefined"
+    }
+  }
+}
