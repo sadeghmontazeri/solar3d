@@ -1043,4 +1043,73 @@ Steps 7b and 8 **approved**; Gate 5 passed; Phase 3 complete. Proceed to **Step 
 selects / explicit action operates) — unchanged by the scope expansion, and a prerequisite for it.
 
 ---
+
+---
+
+## 2026-09-13T17:05:00-04:00 — agent: `claude-opus-5` (Claude Code) — Phase 7 rewritten after third-party review — `PROPOSED`
+
+**Trigger:** Codex-GPT6 third review (`gpt-ideas.md`, 2026-09-13T16:22:33) challenged seven
+points in my first Phase 7 draft. I verified its technical claims against the code rather than
+accepting them. **All three checkable claims are correct.**
+
+### Claims verified TRUE
+
+| Claim | Verification |
+|---|---|
+| **Particle speed saturates at 5 kW** (`scene-3d.js:4241`) | Confirmed. `(mag/5000)*0.45` capped at 0.45 — computed: 5 000 W → 0.450, and 10 000 / 50 000 / 100 000 W all → **0.450**. On a 100 kW system every significant flow renders identically; the animation carries no magnitude information. Recorded as **V13**. |
+| **`dispose()` is incomplete for profile switching** | Confirmed. It releases the animation frame, three DOM listeners, the overlay container and the renderer — and **nothing else**. No disposal of geometries, materials, procedural canvas textures, the 10 `TubeGeometry` cables, particle Points and buffers, floating labels, `switchgear`, `circuitGraph`, `cameraTransition`, or `this.on()` listeners. Repeated switching leaks GPU memory. Recorded as **V14**. |
+| **`verify_step7b.js` "QG open" also opens Q0** | Confirmed, lines 169–170. Opening Q0 kills BUS-G entirely, so that sub-test does not isolate QG-open behaviour. It is not a false result — unit test **P2** covers QG-open properly with Q0 closed — but the browser sub-test proves less than its label claims. |
+
+### Corrections adopted into the plan
+
+1. **Step 15 split into 15a–15d** — data contract / model parameterisation / incremental scene
+   conversion / switching and cleanup. My single large refactor was the shape of change that
+   fails.
+2. **Circular prerequisite fixed.** The first draft made "profile architecture exists" a
+   prerequisite of Phase 7 while making it Step 15 *of* Phase 7. Now: contract design runs now in
+   parallel with Steps 9–11; implementation after they are approved; each family only when its
+   SLD arrives.
+3. **Three-phase is not "×3".** Balanced first with an explicit UI label; per-phase data shape
+   from day one; total AC derived from phase powers; line-to-line derived from line-to-neutral;
+   DC and battery kept separate — voltages, battery capacity and inverter limits do not all
+   triple. Unbalanced and single-phase-loss are **"not modelled"**, never an estimate.
+4. **Topology is not inferred from its name.** My draft asserted "off-grid has no grid and a
+   mandatory battery" as a contract. Withdrawn — battery, EPS, bypass and isolation come from the
+   owner's SLD and equipment specs.
+5. **Power is a parameter, but capacity does not imply one arrangement.** No free 5–100 kW slider
+   guessing inverter or string counts. **Approved configurations** per family, with equipment
+   counts changing in steps.
+6. **Family order follows which SLD arrives**, not a fixed sequence I chose. The first
+   three-phase example need not be the most complex hybrid.
+7. **SLD intake does not force the owner to redraw.** A mapping table per SLD (drawing id ↔
+   component/port/terminal), stored with SLD revision, equipment specs, assumptions and an
+   explicit unknowns list.
+
+Also added from that review: camera auto-framing must not assume one scene scale (7e); a family
+is "supported" only for its tested approved configurations (7h); a profile without an SLD may
+appear as *"awaiting drawing"* but must not simulate or show invented numbers; and the unit
+ambiguity — whether the kW figures mean total AC, inverter AC or array DC — now **blocks 15a**.
+
+### Also added to `PLAN.md`
+
+A **status dashboard** at the top: phase-by-phase state, the seven defects closed
+(E2, E7, V1, V2, V6, V10, V11), and the ten still open.
+
+### Assessment of the third review
+
+Correct on every checkable point, and two of its findings (V13, V14) are genuine blockers for the
+scope expansion that neither the implementing agent nor I had surfaced. Its process criticism is
+also fair: "behaviour preservation during a refactor" is not "electrical correctness", and P4
+deliberately preserves the unclipped behaviour rather than endorsing it.
+
+One point where I would add nuance rather than disagree: it notes the earlier claim that nobody
+had run the app in a browser is no longer true. Correct — Step 1 produced live Chrome evidence,
+and every step since has browser verification. That statement was retired in `Ideas.md` at Gate 1.
+
+### Status
+
+Phase 7 remains `PROPOSED` and gated. **Nothing in it starts before Steps 9–11 are approved**,
+and no family is built before its SLD exists. Next action is unchanged: **Step 9**.
+
+---
 <!-- Next agent: append below this line. Do not modify anything above it. -->
