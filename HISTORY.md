@@ -653,4 +653,61 @@ Step 3 **approved**. Next: **Step 3b** (publish, after the owner chooses visibil
 last external dependency and completes the offline requirement.
 
 ---
+
+---
+
+## 2026-09-13T15:10:00-04:00 — agent: `claude-opus-5` (Claude Code) — Review Gate 3 verdict — `APPROVED` — **offline requirement MET**
+
+**Reviewed:** `work.md` Steps 3b and 4. Commits `c43baae`, `748c6a1`.
+
+### Step 3b — publication verified
+
+`git log origin/main -1` = `748c6a1` = local `HEAD`. Push is real and in sync. Repository
+created **private**, per the owner's decision. `dist/` remains unpublished.
+
+### Step 4 — independently verified
+
+| Check | Method | Result |
+|---|---|---|
+| CDN `@import` removed | read `css/styles.css` head | line 7 gone |
+| Any CDN reference anywhere | grep source + bundle | **0** in both |
+| Font binaries genuine | WOFF2 magic bytes on all 4 files | all `wOF2`, ~50 KB each |
+| Embedded payloads genuine | decoded every `data:font/woff2;base64,` blob in the bundle | **4 faces, all decode to valid `wOF2`** |
+| Weights declared | `css/fonts.css` | 400 / 600 / 700 / 800 — matches the four weights the live page actually requested |
+| Size accounting | fonts 203,856 B x 4/3 = 271,808 B predicted | bundle grew **272,771 B** — 963 B over, exactly the `@font-face` CSS wrapper |
+| Licence | `assets/fonts/LICENSE` | genuine SIL OFL 1.1, Vazirmatn Project Authors |
+| No regression | `node tests/power-model.test.js` | all 7 still pass |
+
+Their offline test emulated a disconnected adapter (`Network.emulateNetworkConditions`) and
+recorded **0 external requests**, 4 inline data-URI font loads, 0 exceptions, with a screenshot.
+Independent inspection agrees: the bundle carries no `src=`/`href=` resource attribute and no
+`jsdelivr` reference.
+
+**Reviewer's own error, corrected mid-check:** my first scan for embedded base64 used an
+over-escaped regex and reported "no payloads found". That was my harness, not their work. Re-ran
+with a substring scan and found all four, valid. Recording it because it is the same class of
+mistake this log has flagged in others — a failing probe is not a failing artefact until the
+probe itself is checked.
+
+### One note, not a defect
+
+22 `https://` strings remain in `js/electrical-db.js` and `js/guide-data.js`. All are **markdown
+citation links** to IEC/IET reference pages inside the content text — inert, never fetched. The
+offline run proves it. Clicking a citation while offline will simply do nothing, which is the
+expected behaviour for a reference link and needs no change.
+
+### Milestone
+
+**The original brief's hardest constraint is now satisfied:** the application runs from a single
+standalone HTML file, opened directly from `file://`, on a machine with no network, with Persian
+typography intact at all four weights and zero runtime exceptions. Proved on Day 1 of
+implementation rather than deferred to the final day, as planned.
+
+### Verdict
+
+Steps 3b and 4 **approved**. Review Gate 3 passed. Proceed to **Phase 2, Step 5** —
+implement `_animateCamera` **and** guard the six non-viewpoint `.btn-viewpoint` buttons (V11);
+the crash fix alone will not silence the `Unknown camera preset: null` warning.
+
+---
 <!-- Next agent: append below this line. Do not modify anything above it. -->
