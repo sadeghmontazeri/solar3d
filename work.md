@@ -771,6 +771,163 @@ None.
 ### Commit
 `step-7: structural BUS-G node balance fix`
 
+---
+
+## Step 7b — Correct two inverted particle-flow signs
+**Date:** 2026-09-13T16:00:00-04:00
+**Agent:** Antigravity / Gemini 3.8 Flash
+**Status:** DONE
+
+### What I changed
+- `js/app.js`:395,397 — Inverted power flow signs in `updatePowerFlows`:
+  - `battery`: changed from `batPower` to `-batPower` so positive indicates discharge toward inverter and negative indicates charge away from inverter.
+  - `inv_grid`: changed from `(gridPower - normalPower - bypassPower)` to `(normalPower + bypassPower - gridPower)` so positive indicates export from inverter into BUS-G (toward MDB).
+- `scripts/verify_step7b.js`:1-215 — Chrome CDP test script inspecting `sceneInstance.animatedParticles` and `updatePowerFlows` across scenarios (defaults, evening_peak, and QG open).
+- `evidence/step7b/step7b_particle_flows.png` — Visual evidence screenshot captured in live Chrome.
+- `dist/solar-app.html` — Rebuilt standalone offline bundle (`node build.js`).
+
+### Verify output
+```
+$ node scripts/verify_step7b.js
+Spawned Chrome for Step 7b verification on port 9229...
+=== 1. Defaults Scenario ===
+{
+  "inv_grid": {
+    "active": true,
+    "direction": 1,
+    "watts": 2200,
+    "speed": 0.198
+  },
+  "battery": {
+    "active": true,
+    "direction": -1,
+    "watts": -869.5999999999995,
+    "speed": 0.07826399999999994
+  },
+  "telemetry": {
+    "batP": 870,
+    "gridP": 0
+  }
+}
+Captured evidence screenshot: evidence/step7b/step7b_particle_flows.png
+=== 2. Evening Peak Scenario ===
+{
+  "battery": {
+    "active": true,
+    "direction": 1,
+    "watts": 3700,
+    "speed": 0.333
+  },
+  "telemetry": {
+    "batP": -3700,
+    "gridP": 0
+  }
+}
+=== 3. QG Open Scenario ===
+{
+  "inv_grid": {
+    "active": false,
+    "direction": 1,
+    "watts": 0,
+    "speed": 0.05
+  },
+  "telemetry": {
+    "gridP": 0
+  }
+}
+
+=== Console Health ===
+Exceptions count: 0
+
+=== Verification Summary ===
+defaults inv_grid forward (+1): PASS
+defaults battery reverse (-1): PASS
+evening_peak battery forward (+1): PASS
+qg_open inv_grid inactive (false): PASS
+
+Overall Verdict: ALL STEP 7b TESTS PASSED! ✓
+
+$ node scripts/verify_step7b.js "file:///C:/Users/11/Desktop/PC/shahrivar/solar-app/APP/17/dist/solar-app.html"
+Spawned Chrome for Step 7b verification on port 9229...
+=== 1. Defaults Scenario ===
+{
+  "inv_grid": {
+    "active": true,
+    "direction": 1,
+    "watts": 2200,
+    "speed": 0.198
+  },
+  "battery": {
+    "active": true,
+    "direction": -1,
+    "watts": -869.5999999999995,
+    "speed": 0.07826399999999994
+  },
+  "telemetry": {
+    "batP": 870,
+    "gridP": 0
+  }
+}
+=== 2. Evening Peak Scenario ===
+{
+  "battery": {
+    "active": true,
+    "direction": 1,
+    "watts": 3700,
+    "speed": 0.333
+  },
+  "telemetry": {
+    "batP": -3700,
+    "gridP": 0
+  }
+}
+=== 3. QG Open Scenario ===
+{
+  "inv_grid": {
+    "active": false,
+    "direction": 1,
+    "watts": 0,
+    "speed": 0.05
+  },
+  "telemetry": {
+    "gridP": 0
+  }
+}
+
+=== Console Health ===
+Exceptions count: 0
+
+=== Verification Summary ===
+defaults inv_grid forward (+1): PASS
+defaults battery reverse (-1): PASS
+evening_peak battery forward (+1): PASS
+qg_open inv_grid inactive (false): PASS
+
+Overall Verdict: ALL STEP 7b TESTS PASSED! ✓
+```
+
+### Result vs expected
+| Check | Expected | Actual | Pass? |
+|---|---|---|---|
+| defaults `inv_grid` | +2200 W, forward (+1, inverter → MDB) | +2200 W, dir=1, speed=0.198 | PASS |
+| defaults `battery` (charging 870) | −870 W, reverse (-1, inverter → battery) | −869.6 W, dir=-1, speed=0.078 | PASS |
+| evening_peak `battery` (discharging 3700) | +3700 W, forward (+1, battery → inverter) | +3700 W, dir=1, speed=0.333 | PASS |
+| QG open `inv_grid` | 0 W, inactive (active: false) | 0 W, active=false | PASS |
+| Standalone bundle `dist/solar-app.html` | All flow directions match source | Identical results across all 3 scenarios | PASS |
+| Console Exceptions | 0 exceptions | 0 exceptions | PASS |
+
+### Surprises / notes
+- Verified on both `index.html` and the bundled `dist/solar-app.html` under headless Chrome CDP.
+- Visual inspection confirms particles on the Inverter Grid gland → MDB Gland G2 cable animate away from the inverter into BUS-G at default settings.
+- The remaining 7 unidirectional flows were untouched as instructed.
+
+### Not done
+None.
+
+### Commit
+`step-7b: correct inv_grid and battery flow signs`
+
+
 
 
 

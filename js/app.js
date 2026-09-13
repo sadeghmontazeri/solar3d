@@ -392,9 +392,9 @@
         window.sceneInstance.updatePowerFlows({
           pv1: { active: pv1Active, watts: pv1Power },
           pv2: { active: pv2Active, watts: pv2Power },
-          battery: { active: batActive, watts: batPower },
+          battery: { active: batActive, watts: -batPower },
           grid_in: { active: gridInActive, watts: Math.max(0, gridPower) },
-          inv_grid: { active: invGridActive, watts: inverterGridAvailable ? (gridPower - normalPower - bypassPower) : 0 },
+          inv_grid: { active: invGridActive, watts: inverterGridAvailable ? (normalPower + bypassPower - gridPower) : 0 },
           grid_bypass: { active: bypassActive, watts: bypassPower },
           inv_eps: { active: invEpsActive, watts: epsPower },
           load_critical: { active: critActive, watts: epsPower },
