@@ -367,3 +367,82 @@ None.
 
 ### Commit
 `step-3: single-file build script`
+
+---
+
+## Step 3b — Publish to GitHub
+**Date:** 2026-09-13T14:47:30-04:00
+**Agent:** Antigravity / Gemini 3.8 Flash
+**Status:** DONE
+
+### What I changed
+- No application code changed.
+- Configured remote origin: `https://github.com/sadeghmontazeri/solar3d.git`
+- Confirmed with owner: repository is private.
+- Executed pre-push verification and secret scans.
+- Pushed `main` branch to GitHub remote `origin/main`.
+
+### Verify output
+```
+$ git remote -v
+origin  https://github.com/sadeghmontazeri/solar3d.git (fetch)
+origin  https://github.com/sadeghmontazeri/solar3d.git (push)
+
+$ git status --short
+(clean)
+
+$ git ls-files dist/
+(empty)
+
+$ (git ls-files).Count
+49
+
+$ git grep -nIE "(api[_-]?key|secret|passwd|password|token|BEGIN [A-Z ]*PRIVATE KEY|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{20,}|xox[baprs]-)"
+HISTORY.md:15:**Never commit credentials, API keys, tokens, or `.env` files.** This application
+HISTORY.md:162:- Write dated ideas in `gpt-ideas.md` and retain history. Prepare for 3–4 days of GitHub work across devices; do not commit credentials or secrets.
+HISTORY.md:186:Use separate branches/clones or worktrees, one owner per shared file, and one integrator for merges and generated HTML. Commit/push before device handoff; record branch and commit. Append dated agent entries without rewriting other entries. Inspect staged diffs and exclude secrets, private logs, and local-only artifacts.
+HISTORY.md:318:`setTimeout(..., 80)` with `pos` captured in a closure and **no cancellation token**. A newer
+HISTORY.md:631:is configured in this environment, and handling a token or password is outside what this agent
+HISTORY.md:635:"secret"/"token"/"credentials" inside the planning documents themselves. Repository is 3.3 MB;
+HISTORY.md:645:(clean tree, `dist/` unpublished, secrets scan); `git push -u origin main`; stop and hand over if
+HISTORY.md:646:authentication is requested — never type, store, or generate a credential; enable secret scanning
+Ideas.md:112:captured in a closure and **no cancellation token**. A newer user command issued inside that
+Ideas.md:335:No credentials, tokens, `.env`, or private logs; enable secret scanning at repo creation.
+PLAN.md:37:- Commit credentials, tokens, `.env`, or private logs. This project needs none.
+PLAN.md:398:A secrets scan was already run by the reviewer across all tracked files and came back clean —
+PLAN.md:399:the only matches were the words "secret"/"token"/"credentials" inside the planning documents
+PLAN.md:402:git grep -nIE "(api[_-]?key|secret|passwd|password|token|BEGIN [A-Z ]*PRIVATE KEY|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{20,}|xox[baprs]-)"
+PLAN.md:411:type, paste, store, or generate a token, password, or SSH key, and never write one into a file
+PLAN.md:418:**Then, in the repository settings, the owner should enable secret scanning and push protection.**
+gpt-ideas.md:62:- **قابلیت تحویل قابل ردگیری:** HTML ساخته‌شده، شناسهٔ نسخه/commit داشته باشد و به‌عنوان artifact یا پیوست Release همراه checksum تحویل شود. لازم نیست فایل تولیدشده در شاخهٔ سورس commit شود، ولی کاربر باید بداند فایل روی دو دستگاه دقیقاً یک نسخه است. اطلاعات ورود و secrets وارد سورس یا HTML نشوند.
+gpt-ideas.md:175:Use small PRs with changed behavior and validation evidence. Commit and push before changing devices; fetch and check branch/commit before resuming. Keep tooling versions/lockfile reproducible. Generate the release from merged source rather than hand-editing or merging generated HTML. Inspect diffs and exclude credentials, tokens, `.env` files, private logs, and local-only artifacts; use secret scanning when configuring the repository.
+
+$ git push -u origin main
+To https://github.com/sadeghmontazeri/solar3d.git
+ * [new branch]      main -> main
+branch 'main' set up to track 'origin/main'.
+
+$ git log origin/main --oneline -1
+a808109 review: Gate 3 verdict — approve step 3, add GitHub publish step
+```
+
+### Result vs expected
+| Check | Expected | Actual | Pass? |
+|---|---|---|---|
+| Remote URL | `sadeghmontazeri/solar3d.git` | `https://github.com/sadeghmontazeri/solar3d.git` | PASS |
+| Working tree | clean | clean (empty status) | PASS |
+| `dist/` ignored | Empty | Empty (0 files tracked) | PASS |
+| Tracked files | ~50 | 49 files | PASS |
+| Secrets scan | No secrets in code/data | Clean (only documentation references) | PASS |
+| Git Push | `main` pushed to `origin/main` | Successfully pushed, tracking configured | PASS |
+| Remote HEAD | Matches local HEAD | `a808109` on both | PASS |
+
+### Surprises / notes
+- Windows Git Credential Manager seamlessly authenticated the push without requiring manual credential input.
+- Cross-device rule is now active: commit and push at the end of each working block.
+
+### Not done
+None.
+
+### Commit
+`step-3b: record GitHub publish in work.md`
