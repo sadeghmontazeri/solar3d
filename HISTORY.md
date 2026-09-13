@@ -432,4 +432,79 @@ plan's author has already been corrected twice in this project.
 `PROPOSED`. No step may begin until the owner approves. Reviewer checks `work.md` at each gate.
 
 ---
+
+---
+
+## 2026-09-13T13:55:00-04:00 — agent: `claude-opus-5` (Claude Code) — Review Gate 1 verdict — `APPROVED WITH CONDITIONS`
+
+**Reviewed:** `work.md` Steps 0-1 by Antigravity / Gemini 3.8 Flash. Commits `c2bf25f`, `7b00248`.
+
+### Compliance — clean
+
+`git diff c2bf25f 7b00248 --stat` confirms **zero application code modified**: only
+`evidence/step1/*`, `scripts/smoke_test_runner.js`, and `work.md`. Working tree clean. The
+plan's hard rules were followed exactly. The unrequested `smoke_test_runner.js` is a test
+harness, not application code — acceptable and reusable.
+
+### First live runtime evidence in this project
+
+Chrome 152.0.7977.83 / Windows 11 / RTX 5060 Ti, 1904x985 canvas, 62 scene children, steady
+60 FPS. Five findings reproduced verbatim from static analysis:
+
+| Finding | Predicted | Observed live |
+|---|---|---|
+| E2 grid double-count | ~2200 W import | `+2200 وات` — **exact** |
+| V1 Front View crash | `_animateCamera is not a function` | exact TypeError at `scene-3d.js:3800` |
+| V2 SBY corruption | state breaks on 3D click | `"I"` -> undefined |
+| V5 filters inert | 3D unaffected | particle systems unchanged across all 8 |
+| S3 CDN font | requests to jsdelivr | 4 requests, all Vazirmatn |
+
+**S3 refined:** the page pulls **four** weights (Regular, SemiBold, Bold, ExtraBold), not the two
+my Step 4 specified. Plan corrected.
+
+### Two checks rejected — do not count as evidence
+
+1. **Check 6 (`eps_rcd`) is invalid.** Recorded `before` was `hudEpsP: "0"`; at defaults
+   (SBY=I, 1500 W critical) it should read 1500 W. Check 5 immediately prior set
+   `switchgear.sby_switch.state = undefined`, and the runner never reloads between checks.
+   EPS was already dead for an unrelated reason. **E7 remains code-verified only.**
+2. **Check 3 (SOC) is inconclusive, not PASS.** The agent observed no drift and marked it PASS
+   against an expectation of drift. The observation was correct; the test could not show
+   anything: drift is 0.047 % at 10 s and 0.283 % at 60 s, both rounding to 75. ~212 s is needed.
+   **My plan's "60 seconds" was also wrong — a plan defect, not an agent error.**
+
+**Probe weakness:** `JSON.stringify` drops `undefined`, so `sbyClick.after` and `epsTelemetry`
+both serialised to `{}`. "Value became undefined" and "probe failed" are currently
+indistinguishable. Must capture via `String(value)`.
+
+### New defect — credit to the implementing agent
+
+**V11.** `[HybridSolar3DScene] Unknown camera preset: null`. None of the three reviewing agents
+found this. **Their attributed cause was wrong** (reported as init-time orchestrator sync); it
+fires on **click**. Root cause diagnosed here: six buttons carry class `btn-viewpoint` with no
+`data-viewpoint` attribute — `btn-camera-front`, `btn-camera-reset`,
+`btn-toggle-enclosure-shell`, `btn-toggle-dc-door`, `btn-toggle-mdb-door`,
+`btn-toggle-eps-door`. The generic handler (`app.js:727-740`) runs on all six ->
+`getAttribute` -> null -> `setCameraPreset(null)`. Front View fires **two** handlers at once,
+which is why Check 4 produced both a warning and the TypeError.
+
+### Plan amendments issued
+
+1. **Step 1b added** — re-run the RCD check on a clean page load; measure SOC divergence over
+   240 s or read the unrounded value; fix the `String(value)` probe and re-run Check 5.
+2. **Step 4 corrected** — inline four font weights, not two.
+3. **Step 5 extended** — `_animateCamera` alone will not silence V11, because the generic
+   handler still fires. Added a `if (!viewpoint) return;` guard with its own verification.
+
+### Verdict
+
+Steps 0 and 1 **approved**. Step 1 is the most valuable step executed so far: it converted five
+static-analysis claims into live browser evidence and surfaced a defect three review agents
+missed. Proceed to **Step 1b** (about 15 minutes), then **Step 2**. Step 2 is not blocked by
+the re-runs.
+
+Status of findings after this gate: E2, V1, V2, V5, S3 — **live-confirmed**.
+E7, E9 — **code-verified, live demonstration pending Step 1b**. V11 — **new, live-confirmed**.
+
+---
 <!-- Next agent: append below this line. Do not modify anything above it. -->

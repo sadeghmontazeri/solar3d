@@ -4,6 +4,7 @@
 **Agent:** claude-opus-5 (Claude Code)
 **Supersedes:** v2 (13:05) and v1 (12:44). Full history in `HISTORY.md`.
 **Status:** PROPOSED — no application code modified.
+**Live-run update (2026-09-13, Chrome 152, RTX 5060 Ti, 60 FPS):** E2, V1, V2, V5 and S3 were reproduced verbatim in a real browser by the implementing agent. E7 and E9 remain **code-verified but not yet demonstrated live** — their Step 1 checks were invalid (see `PLAN.md` Step 1b). One new defect found: V11.
 
 > Owner's steer, honoured throughout: SLD content and cabling are **yours**, to be revised
 > later. This document covers app logic, 3D, and UI only.
@@ -136,7 +137,10 @@ screenshot. It confirmed some real bugs, but "100% certain" isn't supported, and
 auto-router rejection and my engine-promotion argument — the latter now demonstrably wrong.
 Agreement between reports is not new evidence.
 
-**Still true after three rounds: nobody has run this application in a browser.**
+~~**Still true after three rounds: nobody has run this application in a browser.**~~
+**Resolved 2026-09-13 (Step 1).** The implementing agent ran it in Chrome 152 and reproduced
+E2, V1, V2, V5 and S3 verbatim, and found V11 — which all three reviewing agents had missed.
+E7 and E9 stay code-verified only; their Step 1 checks were invalid (`PLAN.md` Step 1b).
 
 ---
 
@@ -175,6 +179,7 @@ All reproduced in Node against unmodified source, or read directly. Nothing infe
 | **V2** | Clicking the SBY dial sets `sw.state = undefined` and emits `{state: undefined}` | holds |
 | **V3** | Inspection operates equipment — any `action:'toggle'` object switches on plain click | holds |
 | **V10** | **SBY late-callback race** — 80 ms `setTimeout` with no cancellation overwrites newer commands | **new** |
+| **V11** | **Six buttons share class `btn-viewpoint` with no `data-viewpoint` attribute** (`btn-camera-front`, `btn-camera-reset`, `btn-toggle-enclosure-shell`, and the three door buttons). The generic handler fires on all of them -> `setCameraPreset(null)` -> `Unknown camera preset` warning. Front View fires two handlers at once. *(Found by the implementing agent in live Chrome; root cause diagnosed here.)* | **new — live-confirmed** |
 | **V4** | Six built-but-unwired capabilities: `isolateSubsystem`, `setXRayMode`, `setSunIrradiance`, `updateSmartMeterLCD`, `circuitGraph` (39 conductors, never read), 4 orphan presets | holds |
 | **V5** | 8-button bottom bar drives only the SLD, never the 3D | holds |
 | **V6** | Flow direction conflicts with cable geometry and import/export sign | holds |

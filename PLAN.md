@@ -174,6 +174,64 @@ match the table.
 
 ---
 
+#### Step 1b — Re-run two invalid checks ⚠️ **added after review of Step 1**
+
+**Why:** Step 1 was good work — 5 of 8 checks are solid and confirmed findings in a live browser
+for the first time. But two checks did not prove what they claimed, for reasons that are partly
+this plan's fault.
+
+**Problem 1 — Check 6 (RCD) ran on corrupted state.**
+The recorded `before` value was `hudEpsP: "0"`. At default settings (SBY = I, critical load
+1500 W) it should read **1500 W**. It read 0 because **Check 5, immediately before, set
+`switchgear.sby_switch.state = undefined`** — and the runner never reloads the page between
+checks. You cannot show "opening the RCD changes nothing" when the value was already 0 for an
+unrelated reason. **The check proved nothing.**
+
+**Problem 2 — Check 3 (SOC) was too short, and my instruction was wrong.**
+You observed 75 % at t=0 and t=10 s and marked it PASS against an expectation of *drift*. Your
+observation was correct; the test was not capable of showing anything:
+
+| elapsed | SOC drift | displayed |
+|---|---|---|
+| 10 s | 0.047 % | 75 |
+| 60 s | 0.283 % | 75 |
+| **212 s** | **1.001 %** | **76** |
+
+`Math.round()` hides everything below ~212 s. My plan said "60 seconds", which was also too
+short. This is a plan defect, not your error.
+
+**Do — with a fresh page load before each check:**
+
+**1b-A — RCD, on clean state.** Reload the page. Do **not** click the SBY dial first.
+Confirm `hud-eps-p` reads **≈1500 W**. Then open the RCD switch. Record before/after.
+
+**1b-B — SOC divergence, measured directly.** Reload. In the console, run:
+```js
+const read = () => ({
+  raw:    window.__state ? window.__state.batterySOC : 'n/a',
+  badge:  document.getElementById('hud-bat-soc').textContent,
+  slider: document.getElementById('slider-soc').value,
+  label:  document.getElementById('val-soc').textContent
+});
+console.log('t=0', read());
+setTimeout(() => console.log('t=240s', read()), 240000);
+```
+If `window.__state` is not exposed, instead **wait 4 minutes** and compare the badge against the
+slider visually. Record both readings.
+
+**1b-C — fix the probe.** In `scripts/smoke_test_runner.js`, `JSON.stringify` silently drops
+`undefined` values — which is why `sbyClick.after` and `epsTelemetry` both came back as `{}`.
+"The value became undefined" and "the probe failed" currently look identical. Capture with
+`String(value)` so the two are distinguishable, and re-run Check 5.
+
+**Verify:** `work.md` shows 1500 W → 0 W (or the actual values) for the RCD on clean state, two
+SOC readings 4 minutes apart, and a Check 5 result that distinguishes `undefined` from a failed
+probe.
+
+**Commit:** `step-1b: re-run RCD and SOC checks on clean state`
+
+---
+
 ### 🔍 REVIEW GATE 1 — stop here
 
 ---
@@ -296,7 +354,15 @@ jsdelivr font (removed in Step 4). Everything else must load from the file itsel
 **Do:**
 
 1. Download the Vazirmatn WOFF2 files once, on a machine with internet, into `assets/fonts/`.
-   Minimum: `Vazirmatn-Regular.woff2` and `Vazirmatn-Bold.woff2`.
+   **Step 1 evidence shows the page actually pulls four weights**, so inline all four —
+   not the two this plan originally specified:
+   ```
+   Vazirmatn-Regular.woff2     (400)
+   Vazirmatn-SemiBold.woff2    (600)
+   Vazirmatn-Bold.woff2        (700)
+   Vazirmatn-ExtraBold.woff2   (800)
+   ```
+   Missing any of them will silently degrade headings to a fallback face.
 2. Create `css/fonts.css` with `@font-face` rules using **base64 data URIs**:
    ```css
    @font-face {
@@ -362,12 +428,44 @@ the network disabled.
   }
 ```
 
-Change nothing else. Do not modify `setCameraFrontView()` itself.
+Do not modify `setCameraFrontView()` itself.
 
-**Verify:** reload, click **🎯 نمای روبرو**. The camera glides to a front view; **no console
-error**. Then click a viewpoint preset and confirm that still works (no regression).
+**Also fix the null-preset warning — found by you in Step 1.** ⚠️ *added after review*
 
-**Commit:** `step-5: implement missing _animateCamera`
+Your Step 1 report flagged `[HybridSolar3DScene] Unknown camera preset: null`. Good catch — none
+of the three reviewing agents found it. The root cause is **not** "orchestrator camera sync at
+init" as your report guessed; it fires on **click**. **Six** buttons carry class `btn-viewpoint`
+but have **no `data-viewpoint` attribute**:
+
+```
+btn-camera-front   btn-camera-reset          btn-toggle-enclosure-shell
+btn-toggle-dc-door btn-toggle-mdb-door       btn-toggle-eps-door
+```
+
+The generic `.btn-viewpoint` handler (`app.js:727–740`) runs on all of them, so
+`getAttribute('data-viewpoint')` → `null` → `setCameraPreset(null)` → warning. Clicking Front
+View therefore fires **two** handlers: the generic one (warning) *and* its own
+(`_animateCamera` TypeError). **Adding `_animateCamera` alone will not silence the warning.**
+
+In `js/app.js`, inside the `camButtons.forEach` click handler, bail out when the attribute is
+absent — before the preset lookup:
+
+```js
+        const viewpoint = btn.getAttribute('data-viewpoint');
+        if (!viewpoint) return;   // button shares the class but is not a viewpoint
+```
+
+Place it immediately after the `getAttribute` line. Leave the `active`-class handling above it
+alone unless that causes a visible selection bug — if it does, report rather than redesign.
+
+**Verify:**
+1. Reload → click **🎯 نمای روبرو** → camera glides to a front view, **no TypeError and no
+   `Unknown camera preset` warning**.
+2. Click each of the other five listed buttons → they still do their job, no warning.
+3. Click a real viewpoint preset (e.g. آرایه خورشیدی) → still works.
+4. Console is clean of `Unknown camera preset` across all of the above.
+
+**Commit:** `step-5: implement _animateCamera + guard non-viewpoint buttons`
 
 ---
 
