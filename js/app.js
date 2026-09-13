@@ -371,7 +371,17 @@
 
     // Relay telemetry to SLD
     if (window.SLDSchematic && typeof window.SLDSchematic.updateTelemetry === 'function') {
-      window.SLDSchematic.updateTelemetry(state.telemetry);
+      window.SLDSchematic.updateTelemetry({
+        ...state.telemetry,
+        string1: { voltage_V: state.telemetry.pv?.v || 0, power_W: pv1Power },
+        string2: { voltage_V: state.telemetry.pv?.v || 0, power_W: pv2Power },
+        batteryVoltage_V: state.telemetry.battery?.v || 0,
+        batteryPower_W: state.telemetry.battery?.p || 0,
+        gridVoltage_V: state.telemetry.grid?.v || 0,
+        gridPortPower_W: state.telemetry.grid?.p || 0,
+        epsVoltage_V: state.telemetry.eps?.v || 0,
+        epsPortPower_W: state.telemetry.eps?.p || 0
+      });
     }
 
     // Relay to 3D Scene instance
@@ -1428,7 +1438,8 @@
         modal.classList.add('open');
         if (window.SLDSchematic) {
           window.SLDSchematic.init('sld-container');
-          window.SLDSchematic.updateTelemetry(state.telemetry);
+          const fspdEl = document.getElementById('sld-fspd-mcb');
+          if (fspdEl) fspdEl.setAttribute('title', 'نمایشی — در مدل شبیه‌سازی نشده');
         }
       });
     }
@@ -1456,6 +1467,8 @@
         const tabId = btn.getAttribute('data-tab');
         if (window.SLDSchematic && tabId) {
           window.SLDSchematic.switchTab(tabId);
+          const fspdEl = document.getElementById('sld-fspd-mcb');
+          if (fspdEl) fspdEl.setAttribute('title', 'نمایشی — در مدل شبیه‌سازی نشده');
         }
       });
     });
@@ -2135,7 +2148,9 @@
         'grid_bypass_mcb': ['qbp_mcb', 'sld-qbp'],
         'qo_mcb': ['eps_incomer_mcb', 'sld-qo'],
         'eps_incomer_mcb': ['qo_mcb', 'sld-qo'],
-        'eps_rcd': ['sld-rcd']
+        'eps_rcd': ['sld-rcd'],
+        'fspd_mcb': ['spd_backup_mcb', 'sld-fspd-mcb'],
+        'spd_backup_mcb': ['fspd_mcb', 'sld-fspd-mcb']
       };
 
       const aliases = aliasMap[breakerId] || [];

@@ -86,6 +86,18 @@ const scenarios = [
       failures: { ...defFailures, grid_blackout: true }
     },
     expectedGridP: 0 // Grid dead -> 0
+  },
+  {
+    id: 'P8',
+    name: 'eps_rcd open (dead switch honesty)',
+    input: {
+      irradiance: 850, temperature: 25, normalLoadPower: 2200, criticalLoadPower: 1500, batterySOC: 75,
+      operatingMode: 'normal_day', sbyPosition: 'I',
+      breakers: { ...defBreakers, eps_rcd: false },
+      failures: defFailures
+    },
+    expectedEpsP: 0,
+    expectedEpsV: 0
   }
 ];
 
@@ -93,19 +105,27 @@ let passed = 0;
 
 scenarios.forEach(tc => {
   const res = computePowerModel(tc.input);
-  const gridP = res.grid.p;
-  const matches = (gridP === tc.expectedGridP);
-
-  if (matches) passed++;
-
-  console.log(`${tc.id} [${tc.name}]:`);
-  console.log(`   grid.p = ${gridP} W | expected = ${tc.expectedGridP} W`);
-  console.log(`   Status: ${matches ? '✓ PASS' : '✗ FAIL'}\n`);
+  let matches = false;
+  if (tc.expectedEpsP !== undefined) {
+    matches = (res.eps.p === tc.expectedEpsP && res.eps.v === tc.expectedEpsV);
+    if (matches) passed++;
+    console.log(`${tc.id} [${tc.name}]:`);
+    console.log(`   eps.p = ${res.eps.p} W | expected = ${tc.expectedEpsP} W`);
+    console.log(`   eps.v = ${res.eps.v} V | expected = ${tc.expectedEpsV} V`);
+    console.log(`   Status: ${matches ? '✓ PASS' : '✗ FAIL'}\n`);
+  } else {
+    const gridP = res.grid.p;
+    matches = (gridP === tc.expectedGridP);
+    if (matches) passed++;
+    console.log(`${tc.id} [${tc.name}]:`);
+    console.log(`   grid.p = ${gridP} W | expected = ${tc.expectedGridP} W`);
+    console.log(`   Status: ${matches ? '✓ PASS' : '✗ FAIL'}\n`);
+  }
 });
 
 console.log('----------------------------------------------------');
 console.log(`VERIFICATION RESULT: ${passed} of ${scenarios.length} tests passed.`);
 console.log('----------------------------------------------------\n');
 
-assert.strictEqual(passed, scenarios.length, 'All 7 scenarios must pass corrected targets');
-console.log('ALL STEP 7 POWER BALANCE TESTS PASSED! ✓\n');
+assert.strictEqual(passed, scenarios.length, 'All 8 scenarios must pass');
+console.log('ALL STEP 8 POWER MODEL TESTS PASSED! ✓\n');

@@ -2201,7 +2201,7 @@ class HybridSolar3DScene {
     const qSpdLever = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.045, 0.025), new THREE.MeshStandardMaterial({ color: 0x18181b }));
     qSpdLeverGroup.add(qSpdLever);
     qSpdGroup.add(qSpdLeverGroup);
-    qSpdLever.userData = { id: 'spd_backup_mcb', type: 'SWITCH', name: 'Q_SPD: AC SPD Backup MCB (2P 20A Curve C)', action: 'toggle' };
+    qSpdLever.userData = { id: 'spd_backup_mcb', type: 'SWITCH', name: 'Q_SPD: AC SPD Backup MCB (2P 20A Curve C)', title: 'نمایشی — در مدل شبیه‌سازی نشده', action: 'toggle' };
     this.interactiveObjects.push(qSpdLever);
     this.switchgear['spd_backup_mcb'] = { type: 'lever', object: qSpdLeverGroup, currentAngle: 0.45, targetAngle: 0.45, state: true };
     mdbGroup.add(qSpdGroup);

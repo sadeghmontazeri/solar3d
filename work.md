@@ -927,6 +927,176 @@ None.
 ### Commit
 `step-7b: correct inv_grid and battery flow signs`
 
+---
+
+## Step 8 — Make dead switches honest
+**Date:** 2026-09-13T16:10:00-04:00
+**Agent:** Antigravity / Gemini 3.8 Flash
+**Status:** DONE
+
+### What I changed
+- `js/power-model.js`:76-79 — Implemented `eps_rcd` as a real protective and operable device: declared `rcdOpen = (b.eps_rcd === false)` and updated `rcdTripped = f.ground_fault || rcdOpen`. Opening the RCD disconnects the critical loads downstream and sets `inverterEpsDemand` and `epsPower` to 0.
+- `js/scene-3d.js`:2204 — Added `title: 'نمایشی — در مدل شبیه‌سازی نشده'` to `spd_backup_mcb` switchgear user data.
+- `js/app.js`:374-384,1441-1443,1469-1471,2151-2153 — 
+  - Added `fspd_mcb` and `spd_backup_mcb` to `aliasMap`.
+  - Added `title="نمایشی — در مدل شبیه‌سازی نشده"` to `#sld-fspd-mcb` DOM element when SLD initializes and on tab switches.
+  - Relayed structured telemetry fields (`string1`, `string2`, `batteryVoltage_V`, etc.) to `SLDSchematic.updateTelemetry` to prevent unhandled runtime errors in SLD telemetry formatting.
+- `tests/power-model.test.js`:89-130 — Added test scenario P8 verifying that `eps_rcd = false` results in `eps.p === 0 W` and `eps.v === 0 V`.
+- `scripts/verify_step8.js`:1-148 — Automated Chrome CDP verification asserting EPS drop on RCD open, fspd_mcb honesty titles in SLD & 3D, and clean console health.
+- `evidence/step8/eps_rcd_open.png` — Evidence screenshot of the live app with RCD opened and EPS badge at 0 W.
+- `dist/solar-app.html` — Rebuilt standalone offline bundle (`node build.js`).
+
+### Verify output
+```
+$ node tests/power-model.test.js
+====================================================
+RUNNING GOLDEN BASELINE TESTS FOR PURE POWER MODEL
+====================================================
+
+P1 [defaults, SBY=I, QG closed]:
+   grid.p = 0 W | expected = 0 W
+   Status: ✓ PASS
+
+P2 [QG open (REGRESSION GUARD)]:
+   grid.p = 2200 W | expected = 2200 W
+   Status: ✓ PASS
+
+P3 [SBY=II bypass]:
+   grid.p = 3700 W | expected = 3700 W
+   Status: ✓ PASS
+
+P4 [PV surplus export]:
+   grid.p = -4951 W | expected = -4951 W
+   Status: ✓ PASS
+
+P5 [battery discharging]:
+   grid.p = 0 W | expected = 0 W
+   Status: ✓ PASS
+
+P6 [night charge]:
+   grid.p = 4700 W | expected = 4700 W
+   Status: ✓ PASS
+
+P7 [grid dead (REGRESSION GUARD)]:
+   grid.p = 0 W | expected = 0 W
+   Status: ✓ PASS
+
+P8 [eps_rcd open (dead switch honesty)]:
+   eps.p = 0 W | expected = 0 W
+   eps.v = 0 V | expected = 0 V
+   Status: ✓ PASS
+
+----------------------------------------------------
+VERIFICATION RESULT: 8 of 8 tests passed.
+----------------------------------------------------
+
+ALL STEP 8 POWER MODEL TESTS PASSED! ✓
+
+$ node scripts/verify_step8.js
+Spawned Chrome for Step 8 verification on port 9232...
+=== 1. Initial State (RCD Closed) ===
+{
+  "hudEpsP": "1500",
+  "epsTelemetry": {
+    "v": 230,
+    "p": 1500,
+    "isPowered": true
+  },
+  "rcdBreakerState": true
+}
+
+=== 2. State After eps_rcd Opened ===
+{
+  "hudEpsP": "0",
+  "epsTelemetry": {
+    "v": 0,
+    "p": 0,
+    "isPowered": false
+  },
+  "rcdBreakerState": false
+}
+Captured evidence screenshot: evidence/step8/eps_rcd_open.png
+
+=== 3. fspd_mcb Honesty Titles ===
+{
+  "sldTitle": "نمایشی — در مدل شبیه‌سازی نشده",
+  "obj3dTitle": "نمایشی — در مدل شبیه‌سازی نشده"
+}
+
+=== Console Health ===
+Exceptions count: 0
+
+=== Verification Summary ===
+Initial EPS powered (1500 W): PASS
+RCD open drops EPS to 0 W and 0 V: PASS
+fspd_mcb has illustrative title: PASS
+
+Overall Verdict: ALL STEP 8 VERIFICATIONS PASSED! ✓
+
+$ node scripts/verify_step8.js "file:///C:/Users/11/Desktop/PC/shahrivar/solar-app/APP/17/dist/solar-app.html"
+Spawned Chrome for Step 8 verification on port 9232...
+=== 1. Initial State (RCD Closed) ===
+{
+  "hudEpsP": "1500",
+  "epsTelemetry": {
+    "v": 230,
+    "p": 1500,
+    "isPowered": true
+  },
+  "rcdBreakerState": true
+}
+
+=== 2. State After eps_rcd Opened ===
+{
+  "hudEpsP": "0",
+  "epsTelemetry": {
+    "v": 0,
+    "p": 0,
+    "isPowered": false
+  },
+  "rcdBreakerState": false
+}
+Captured evidence screenshot: evidence/step8/eps_rcd_open.png
+
+=== 3. fspd_mcb Honesty Titles ===
+{
+  "sldTitle": "نمایشی — در مدل شبیه‌سازی نشده",
+  "obj3dTitle": "نمایشی — در مدل شبیه‌سازی نشده"
+}
+
+=== Console Health ===
+Exceptions count: 0
+
+=== Verification Summary ===
+Initial EPS powered (1500 W): PASS
+RCD open drops EPS to 0 W and 0 V: PASS
+fspd_mcb has illustrative title: PASS
+
+Overall Verdict: ALL STEP 8 VERIFICATIONS PASSED! ✓
+```
+
+### Result vs expected
+| Check | Expected | Actual | Pass? |
+|---|---|---|---|
+| P8 test: `eps_rcd = false` | `eps.p = 0 W, eps.v = 0 V` | `eps.p = 0 W, eps.v = 0 V` | PASS |
+| P1-P7 regression guards | P1..P7 unchanged | All 7 pass verbatim | PASS |
+| Browser: Open RCD switch | EPS badge drops to 0 W | `hudEpsP: "0"`, telemetry `{ v: 0, p: 0 }` | PASS |
+| `fspd_mcb` title in SLD | `"نمایشی — در مدل شبیه‌سازی نشده"` | `"نمایشی — در مدل شبیه‌سازی نشده"` | PASS |
+| `spd_backup_mcb` title in 3D | `"نمایشی — در مدل شبیه‌سازی نشده"` | `"نمایشی — در مدل شبیه‌سازی نشده"` | PASS |
+| Standalone bundle `dist/solar-app.html` | Identical behavior to source | Verified in live Chrome CDP | PASS |
+| Console Exceptions | 0 exceptions | 0 exceptions | PASS |
+
+### Surprises / notes
+- Relaying formatted telemetry (`string1`, `batteryVoltage_V`, etc.) from `app.js` to `SLDSchematic.updateTelemetry` also eliminated an existing runtime `TypeError` (`toFixed` on undefined) when opening the SLD modal.
+- `fspd_mcb` is left without an invented electrical effect as instructed; modeling its protection relationship remains an owner decision.
+
+### Not done
+None.
+
+### Commit
+`step-8: implement eps_rcd; label fspd_mcb as illustrative`
+
+
 
 
 

@@ -74,7 +74,9 @@ function computePowerModel(input) {
   }
 
   const qoClosed = b.qo_mcb !== false;
-  const rcdTripped = f.ground_fault;
+  // The RCD is both a manually-operable switch and a protective trip.
+  const rcdOpen = (b.eps_rcd === false);
+  const rcdTripped = f.ground_fault || rcdOpen;
 
   let epsPowered = false;
   let epsPower = 0;
