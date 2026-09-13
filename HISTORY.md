@@ -934,4 +934,113 @@ Step 7 **approved**; E2 closed. Do **Step 7b** next (two lines, ~10 minutes), th
 closes Phase 3 and Review Gate 5.
 
 ---
+
+---
+
+## 2026-09-13T16:40:00-04:00 — agent: `claude-opus-5` (Claude Code) — Gate 5 verdict (Steps 7b + 8) — `APPROVED` — **Phase 3 complete**; Phase 7 scope added
+
+**Reviewed:** `work.md` Steps 7b and 8. Commits `b7dc0e0`, `ec1a91d`.
+
+### Step 7b — approved
+
+Exactly the two lines specified: `battery` → `-batPower`, `inv_grid` →
+`(normalPower + bypassPower - gridPower)`. Verified in both source and bundle, all four
+direction cases correct. **V6's two inverted signs are closed.**
+
+### Step 8 — approved
+
+| Check | Result |
+|---|---|
+| `eps_rcd` in `power-model.js` | exactly as specified |
+| `fspd_mcb` still inert | confirmed — solver reads **none** of `fspd_mcb`, `spd_backup_mcb`, `sld-fspd-mcb`, so "illustrative" is an honest label |
+| Golden tests | 8/8 pass, including the new P8 (`eps_rcd` open → `eps.p = 0`, `eps.v = 0`) |
+| Energy audit re-run | **2,204 grid-tied scenarios, 0 violations** — Step 7's balance survives Step 8 |
+
+**E7 is closed.**
+
+### Scope creep — accepted, with a note
+
+Step 8 touched 21 lines of `app.js`, more than the step described. Two additions beyond scope:
+
+1. **SLD telemetry field mapping.** They hit a real `TypeError: toFixed of undefined` when
+   opening the SLD modal and fixed it by spreading `state.telemetry` and adding the field names
+   `sld-schematic.js` expects. Additive, so existing consumers are unaffected. It fixes a genuine
+   crash and `sld-schematic.js` is owner-owned and could not be edited directly. **Accepted.**
+2. **`fspd_mcb` / `spd_backup_mcb` added to `aliasMap`.** Verified this does **not** make the
+   breaker functional — no alias reaches the solver. It only syncs the 3D lever with the SLD
+   symbol. **Accepted.**
+
+One over-claim to correct: the report presents `obj3dTitle` as evidence the label is visible.
+That test reads `userData.title`, which proves the data exists, not that a user sees it —
+`userData` is not rendered anywhere. The SLD-side label is a DOM patch applied on modal open and
+tab switch, so it will be lost if the SLD re-renders by another path. Both are acceptable given
+the file-ownership constraint, but the label is weaker than "done" implies. Worth revisiting when
+Step 9 builds the real inspector.
+
+### Phase 3 complete
+
+| ID | Defect | Status |
+|---|---|---|
+| E2 | grid double-count | **closed** (Step 7) |
+| E7 | `eps_rcd` inert | **closed** (Step 8) |
+| V6 | inverted flow signs | **closed** (Step 7b) |
+| E3, E4, E5, E6, E9 | efficiency, clipping, string voltage, fault physics, SOC | still open, later phases |
+
+---
+
+## Scope expansion recorded — `PROPOSED`
+
+Owner's new requirement, 2026-09-13:
+
+| Family | Phases | Power | Topologies |
+|---|---|---|---|
+| A | single-phase | to 10 kW | hybrid · on-grid · off-grid |
+| B | three-phase | 5–100 kW | hybrid · on-grid · off-grid |
+
+Each with SLD **and** 3D. **SLDs not yet prepared**; the owner will supply them in later stages.
+
+### Measured baseline for sizing
+
+| | today |
+|---|---|
+| `power-model.js` | scalar single-phase, all ratings hardcoded |
+| `scene-3d.js` | **310 hardcoded `Vector3` coordinates**, 13 `_build*` methods, one layout |
+| three-phase awareness | **zero** — no `L1`/`L2`/`L3`, no 400 V anywhere |
+| SLD-02 "three-phase 15 kW" | a **static picture** — `sld-schematic.js:2206` gates telemetry to SLD-01 |
+
+### Assessment
+
+This is a scope expansion, not a continuation. Three findings drive the plan:
+
+1. The topologies differ **structurally**: on-grid has no battery/EPS/SBY/islanding; off-grid has
+   no grid and a mandatory battery. Not the hybrid model with meshes hidden.
+2. Three-phase is a **power-model rewrite**, scalar → per-phase. Largest single item.
+3. Hand-authoring six layouts is not viable — 310 coordinates × 6 ≈ 1,860 by hand. The only route
+   is **parametric scene builders driven by an equipment list**, which is **P-05** from
+   `Ideas.md`: previously deferred, **now a hard prerequisite**.
+
+Power rating is treated as a **parameter**, not a family — six topologies × one power dimension,
+not six × twenty.
+
+### Added to `PLAN.md` as Phase 7
+
+Prerequisites (Steps 9–11 done; profile architecture proven on the *existing* system; at least
+one owner SLD in hand before its family is built); **Step 15** system profile architecture as a
+behaviour-preserving refactor; build order 1φ on-grid → 1φ off-grid → 3φ hybrid → 3φ variants →
+power scaling; six phase-specific risks including instancing for 100 kW arrays and agreeing the
+ID contract before the owner draws a second SLD.
+
+### Decisions requested from the owner
+
+1. One app with a profile selector, or separate builds? — recommend **one app**
+2. Three-phase balanced-only first, or per-phase imbalance? — recommend **balanced first**
+3. 3D fidelity at 100 kW: equipment-accurate or representative? — recommend **representative**
+4. Agree the component/port/terminal **ID contract before the second SLD is drawn**
+
+### Verdict
+
+Steps 7b and 8 **approved**; Gate 5 passed; Phase 3 complete. Proceed to **Step 9** (click
+selects / explicit action operates) — unchanged by the scope expansion, and a prerequisite for it.
+
+---
 <!-- Next agent: append below this line. Do not modify anything above it. -->

@@ -947,6 +947,137 @@ unreachable.
 
 ---
 
+### PHASE 7 — Multiple system families ⚠️ **added at the owner's request, 2026-09-13**
+
+> **This is a scope expansion, not a continuation.** Read §7.0 before planning any of it.
+
+**Owner's requirement:**
+
+| Family | Phases | Power range | Topologies |
+|---|---|---|---|
+| A | single-phase | up to 10 kW | hybrid · on-grid · off-grid |
+| B | three-phase | 5 to 100 kW | hybrid · on-grid · off-grid |
+
+Each needs its SLD **and** its 3D scene. **The owner has not prepared the SLDs yet** and will
+supply them in later stages. Do not invent them.
+
+---
+
+#### 7.0 Honest sizing — read this first
+
+The app today is **one** hardcoded 5 kW single-phase hybrid system. Measured:
+
+| | today |
+|---|---|
+| `power-model.js` | scalar single-phase; 2×2800 W, 385 V, 230 V, 51.2 V all hardcoded |
+| `scene-3d.js` | **310 hardcoded `Vector3` coordinates** across 13 `_build*` methods — one physical layout |
+| three-phase awareness | **zero** — no `L1`/`L2`/`L3`, no 400 V, nowhere in the model |
+| SLD-02 "three-phase 15 kW" | a **static picture**; `sld-schematic.js:2206` gates live telemetry to SLD-01 only |
+
+Three consequences, stated plainly:
+
+1. **The topologies differ structurally, not parametrically.** On-grid has no battery, no EPS, no
+   SBY switch and no islanding. Off-grid has no grid, no anti-islanding, and a mandatory battery.
+   These are different electrical models — not the hybrid model with meshes hidden.
+2. **Three-phase is a rewrite of the power model**, from scalar to per-phase. It is the single
+   largest item in this phase. Do not estimate it as a parameter change.
+3. **Hand-authoring six 3D layouts would kill the project.** 310 coordinates × 6 ≈ 1,860 to write
+   and maintain by hand. The only viable route is **parametric scene builders driven by an
+   equipment list**, which is finding **P-05** from `Ideas.md` — previously deferred, now a
+   hard prerequisite.
+
+**Treat power rating as a parameter, not a family.** 5–100 kW varies string count, inverter
+rating, and equipment size class. Six topologies × one power parameter — **not** six × twenty
+separate builds.
+
+---
+
+#### 7.1 Hard prerequisites — none of Phase 7 starts before these
+
+1. **Steps 9–11 complete.** The app must be correct and inspectable for *one* system before it
+   is generalised to six. Generalising a broken model multiplies the breakage.
+2. **The profile architecture exists and is proven on the current system** (§7.2). It must be
+   able to reproduce today's 5 kW hybrid exactly, as a profile, with the golden tests and the
+   energy audit still passing. If it cannot reproduce what already works, it will not carry
+   five more.
+3. **The owner has supplied at least one new SLD** before its family is built. Do not build a
+   family speculatively.
+
+---
+
+#### 7.2 Step 15 — System profile architecture (the prerequisite)
+
+Create `js/model/profiles.js`: a declarative description per family.
+
+```js
+{
+  id: 'sp-hybrid-5kw',
+  phases: 1,                  // 1 or 3
+  topology: 'hybrid',         // 'hybrid' | 'ongrid' | 'offgrid'
+  ratedAC_W: 5000,
+  strings: [ /* count, modules each, module spec */ ],
+  battery: { present: true, nominalV: 51.2, capacityAh: 100 },
+  grid:    { present: true, nominalV: 230 },
+  eps:     { present: true },
+  enclosures: [ /* id, kind, position, size, terminals[] */ ],
+  circuits:   [ /* from terminal -> to terminal, conductors */ ]
+}
+```
+
+Then make three things read it instead of hardcoding:
+
+- **`power-model.js`** — take ratings and presence flags from the profile. `battery.present:false`
+  must make the battery branch vanish, not compute zero.
+- **`scene-3d.js`** — replace the 13 `_build*` methods' hardcoded coordinates with builders that
+  place equipment from `enclosures[]`. This is the largest single task in Phase 7.
+- **the inspector** — read component metadata from the profile.
+
+**Acceptance for Step 15:** today's 5 kW hybrid is expressed *purely* as a profile; the 8 golden
+tests and the energy audit pass unchanged; the 3D scene is visually equivalent to the current
+one. **Nothing new is added in this step.** It is a refactor that must change nothing.
+
+---
+
+#### 7.3 Build order — cheapest proof first
+
+| # | Family | Why this order |
+|---|---|---|
+| 1 | **1φ on-grid** | a strict *subset* of hybrid — remove battery, EPS, SBY. Proves the profile mechanism with the least new physics. Fails loudly and cheaply if the architecture is wrong. |
+| 2 | **1φ off-grid** | also a subset — remove grid, force islanding. Adds the always-islanded case. |
+| 3 | **3φ hybrid** | the per-phase power-model rewrite. Largest jump. Do it once, alone, with its own tests. |
+| 4 | **3φ on-grid**, **3φ off-grid** | recombinations of pieces already proven in 1–3. |
+| 5 | **power scaling 5–100 kW** | a parameter sweep across finished families: string count, inverter class, enclosure size, PV instancing. |
+
+Each family gets its own scenario tests and its own energy audit before it is called supported.
+
+---
+
+#### 7.4 Risks specific to this phase
+
+| # | Risk | Mitigation |
+|---|---|---|
+| 7a | Three-phase turns every scalar quantity into three | Start **balanced-load only** (one phase computed, ×3). Add per-phase imbalance later, as its own step, only if the owner needs it. |
+| 7b | A 100 kW array is hundreds of modules — the current scene adds meshes individually | `THREE.InstancedMesh` for repeated modules. Required before any large family, not after. |
+| 7c | Bundle size grows with six families of geometry and six SLD sets | Geometry is generated code, not assets, so growth is modest. Watch startup time. Re-measure at each family. |
+| 7d | Six families × the existing UI = the clutter problem multiplied | Phase 6 (UI) should land **before** family 3, not after. A profile selector needs somewhere clean to live. |
+| 7e | Owner-supplied SLDs may not match the profile model | Agree the ID contract (component / port / terminal naming) **with the owner** before they draw the second SLD. A mismatch found after six SLDs exist is expensive. |
+| 7f | Scope creep into electrical design | The owner owns topology, protection ratings, and neutral/earth bonding for every family. Agents implement; they do not choose. |
+
+---
+
+#### 7.5 Decisions needed from the owner before Step 15
+
+1. **One app or several?** Recommended: **one app**, with a profile selector in the top bar.
+   Matches the original "add sections incrementally" requirement and keeps one offline file.
+2. **Three-phase depth?** Recommended: **balanced loads first.** Per-phase imbalance is a
+   significantly larger model and can follow if it is actually needed for teaching.
+3. **3D fidelity at 100 kW?** Recommended: **representative, not equipment-accurate.** A readable
+   schematic-physical scene beats a literal container model, and costs a fraction.
+4. **ID contract** — agree naming for components, ports and terminals **before** the second SLD
+   is drawn (risk 7e).
+
+---
+
 ## E. Deferred — do not start without explicit approval
 
 | Item | Why deferred |
