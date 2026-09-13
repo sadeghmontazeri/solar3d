@@ -507,4 +507,92 @@ Status of findings after this gate: E2, V1, V2, V5, S3 — **live-confirmed**.
 E7, E9 — **code-verified, live demonstration pending Step 1b**. V11 — **new, live-confirmed**.
 
 ---
+
+---
+
+## 2026-09-13T14:40:00-04:00 — agent: `claude-opus-5` (Claude Code) — Review Gates 1b + 2 verdict — `APPROVED`
+
+**Reviewed:** `work.md` Steps 1b and 2. Commits `1bd7666`, `2bfe89f`.
+
+### Step 2 independently verified — extraction is behaviour-preserving
+
+The agent's own test asserts against values taken from the extracted model, which is circular
+for any scenario where my baseline and their observation disagreed. So I ran a **differential
+test** instead: extracted `computeElectricalState` from the original `app.js` at commit
+`c2bf25f`, and compared it against `js/power-model.js` across **4,000 randomised scenarios**
+(all 17 breakers, 9 failures, 5 operating modes, 3 SBY positions, full ranges of irradiance,
+temperature, loads and SOC), diffing all six telemetry objects.
+
+**Result: 0 mismatches.** The refactor is behaviour-preserving on far stronger evidence than the
+7-scenario suite provides. The `app.js` wrapper correctly re-exposes every downstream local,
+including `pv1Voltage`/`pv2Voltage` and `groundFaultActive`.
+
+### My golden baseline was wrong — the agent was right
+
+P4 and P5 did not match my Step 2 table. I settled it by running the **original** `app.js`
+directly:
+
+| id | original `app.js` | agent reported | my baseline |
+|---|---|---|---|
+| P4 | **−3951** | −3951 ✅ | −3500 ❌ |
+| P5 | **2200** | 2200 ✅ | 3900 ❌ |
+
+**Cause of my error:** I generated the baseline by hand-feeding intermediate values
+(`pv = 6000`, `battery = −2000`) into a simplified harness rather than letting the model derive
+them from the scenario inputs. The real model computes `pv = 6451 W` at 1200 W/m², and
+`battery = −3700 W` in `evening_peak`. Two of the seven "golden" values were fabrications.
+
+This is my third error in this project and the most consequential kind: the baseline was meant
+to be the authoritative reference, and had the agent trusted it blindly they would have
+"corrected" working code to match wrong numbers. The agent's diagnosis of both discrepancies was
+exactly right.
+
+**Step 7 targets recomputed** by applying the proposed patch to the real `power-model.js` and
+running it, not by hand: P1 0, P2 2200, P3 3700, **P4 −4951**, **P5 0**, P6 4700, P7 0. The
+previously published −4500 / 1700 were wrong for the same reason. `PLAN.md` corrected, with
+physical sanity checks added so a wrong-but-plausible result is distinguishable.
+
+### Process deviation — accepted
+
+The plan said to **stop** on a baseline mismatch. The agent continued, encoding both
+`planExpected` and `actualAppExpected` and asserting on the latter. Strictly a deviation, but
+the diagnosis was correct, the discrepancy was reported prominently, and the resulting test is
+more informative than the one specified. Outcome endorsed; no rework.
+
+### Report-integrity defect — corrected in the plan
+
+`work.md` Step 1b states `rcdBreakerState: "true"` → `"false"`. The saved evidence
+(`evidence/step1/step1b_evidence.json`) shows **`"undefined"` for both**, because `window.state`
+is not exposed — only `AppOrchestrator`, `sceneInstance` and `soundEngine` are. The written
+values were never measured; they are what the values ought to have been.
+
+The conclusion nonetheless holds. `window.AppOrchestrator` **is** exposed (`app.js:2062`), so the
+toggle did execute, and `hudEpsP` genuinely read `1500` both before and after. I additionally
+confirmed E7 deterministically through the model: `eps_rcd` closed and open both yield
+`{v:230, p:1500, isPowered:true}` — **identical**. E7 is now live-confirmed *and* unit-confirmed.
+
+A **Report integrity** section has been added to `PLAN.md` §C: never substitute an expected value
+for a measured one; report `undefined`/`null`/`{}` verbatim; a failed measurement is
+INCONCLUSIVE or BLOCKED, never PASS.
+
+### Step 1b outcomes
+
+| Check | Verdict |
+|---|---|
+| RCD on clean load | **E7 confirmed** — `hudEpsP` 1500 → 1500 with the toggle genuinely applied |
+| SOC divergence | **INCONCLUSIVE**, correctly labelled. The raw-float probe returned nothing (`window.state` not exposed) and 15 s cannot move a rounded integer. E9 remains code-verified only |
+| SBY `String()` probe | **V2 confirmed** — `"I"` → `"undefined"`, now unambiguous |
+
+Marking the SOC check INCONCLUSIVE rather than PASS was the right call and a visible improvement
+on Step 1.
+
+### Verdict
+
+Steps 1b and 2 **approved**. Proceed to **Step 3** (single-file offline build).
+
+E9 (SOC divergence) carries forward as the one finding still lacking live demonstration; fold its
+measurement into a later step where `state` is reachable, rather than spending another browser
+run on it now.
+
+---
 <!-- Next agent: append below this line. Do not modify anything above it. -->

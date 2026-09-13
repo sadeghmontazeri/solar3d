@@ -86,6 +86,25 @@ Create `work.md` at the project root. **Append** to it — never overwrite earli
 
 Commit message format: `step-<N>: <short description>`
 
+### ⚠️ Report integrity — added after Step 1b
+
+**Every value in a report must be a value you actually measured.** In Step 1b the report stated
+`rcdBreakerState: "true"` → `"false"`, but the saved evidence shows `"undefined"` for both,
+because `window.state` is not exposed. The conclusion happened to be right, but the numbers
+written down were not observed — they were what the values *should* have been.
+
+This is the one habit that makes a report worthless, because the reviewer cannot tell which
+figures are real. Rules:
+
+- If a probe returns `undefined`, `null`, or `{}`, **write that**, then say what you infer
+  separately under *Surprises / notes*.
+- Never substitute an expected value for a measured one, not even when you are confident.
+- If a measurement fails, mark the check **INCONCLUSIVE** or **BLOCKED**, never **PASS**.
+- Prefer to paste the evidence JSON verbatim over retyping values into prose.
+
+Marking Step 1b's SOC check INCONCLUSIVE rather than PASS was exactly right. Apply that same
+standard to every value.
+
 ---
 
 ## D. Steps
@@ -289,13 +308,20 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { computeP
 | P1 | defaults, SBY=I, QG closed | irr 850, T 25, norm 2200, crit 1500, SOC 75 | **2200** |
 | P2 | QG open | irr 0, batt off, norm 2200, `qg_mcb=false` | **2200** |
 | P3 | SBY=II bypass | irr 0, batt off, norm 2200, crit 1500, SBY=II | **5900** |
-| P4 | PV surplus export | irr 1200, norm 1000, crit 500, SOC 100 | **−3500** |
-| P5 | battery discharging | irr 0, norm 2200, crit 1500, SOC 80, evening_peak | **3900** |
+| P4 | PV surplus export | irr 1200, norm 1000, crit 500, SOC 100 | **−3951** ⚠️ corrected |
+| P5 | battery discharging | irr 0, norm 2200, crit 1500, SOC 80, evening_peak | **2200** ⚠️ corrected |
 | P6 | night charge | irr 0, norm 2200, crit 0, night_charge | **6900** |
 | P7 | grid dead | `grid_blackout=true` | **0** |
 
 > These values are **deliberately wrong** in the physical sense — P1 should be 0 W. That bug is
 > fixed in Step 7. Step 2 only proves the extraction changed nothing.
+
+> ⚠️ **P4 and P5 were corrected after Step 2.** My original table said −3500 and 3900. Both were
+> wrong: I generated them by hand-feeding intermediate values (`pv = 6000`, `battery = −2000`)
+> into a simplified harness, instead of letting the model derive them from the scenario inputs.
+> The real model computes **pv = 6451 W** at 1200 W/m², and **battery = −3700 W** in
+> `evening_peak`. The implementing agent's observed values were right and my baseline was wrong.
+> Settled by running the original `app.js` at commit `c2bf25f` directly.
 
 **Verify:**
 ```bash
@@ -572,15 +598,26 @@ its definition above this block — do not recompute it inline.
 
 **Then update `tests/power-model.test.js` to the corrected baseline:**
 
-| id | scenario | before | **after (new expected)** |
+These targets were recomputed after Step 2 by applying the patch above to the **real**
+`js/power-model.js` and running it — not by hand arithmetic. The earlier P4/P5 figures
+(−4500 / 1700) were wrong for the same reason the Step 2 baseline was; ignore them.
+
+| id | scenario | before (verified in Step 2) | **after (new expected)** |
 |---|---|---|---|
 | P1 | defaults, SBY=I, QG closed | 2200 | **0** |
 | P2 | **QG open** | 2200 | **2200** ← must not change |
 | P3 | SBY=II bypass | 5900 | **3700** |
-| P4 | PV surplus export | −3500 | **−4500** |
-| P5 | battery discharging | 3900 | **1700** |
+| P4 | PV surplus export | −3951 | **−4951** |
+| P5 | battery discharging | 2200 | **0** |
 | P6 | night charge | 6900 | **4700** |
 | P7 | grid dead | 0 | **0** ← must not change |
+
+Sanity check on the new values, so you can tell a correct result from a plausible-looking one:
+P1 — PV 4570 covers loads 3700 + battery 870, so the grid does nothing → 0.
+P3 — bypass: the grid feeds 2200 normal + 1500 critical → 3700.
+P5 — the battery discharges 3700, exactly the 2200 + 1500 load → grid 0.
+P4 — PV 6451 less 1500 of load → 4951 exported. (That exceeds the 5 kW inverter rating; that is
+E4, missing AC clipping, and is **not** in scope for this step.)
 
 **P2 and P7 are the regression guards.** If either changes, the fix is wrong — stop and report.
 
