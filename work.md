@@ -273,3 +273,97 @@ None.
 
 ### Commit
 `step-2: extract pure power model + golden baseline tests`
+
+---
+
+## Step 3 — Single-file offline build
+**Date:** 2026-09-13T14:38:00-04:00
+**Agent:** Antigravity / Gemini 3.8 Flash
+**Status:** DONE
+
+### What I changed
+- `build.js`:1-65 — Created standalone Node build script to bundle `index.html`, inlining `css/styles.css` into `<style>` and all 11 JS scripts into `<script>` tags in verbatim order, outputting to `dist/solar-app.html`.
+- `scripts/verify_step3_bundle.js`:1-150 — Created verification script copying `dist/solar-app.html` to an isolated external test directory (`C:\Users\11\Desktop\test-dist-step3\solar-app.html`) with zero local subdirectories and verifying via Chrome DevTools Protocol (CDP).
+
+### Verify output
+```
+$ node build.js
+Building standalone offline bundle...
+Source: C:\Users\11\Desktop\PC\shahrivar\solar-app\APP\17\index.html
+Inlining CSS: css/styles.css (54.8 KB)
+Inlining JS:  js/three.min.js (589.3 KB)
+Inlining JS:  js/OrbitControls.js (25.8 KB)
+Inlining JS:  js/scene-3d.js (175.1 KB)
+Inlining JS:  js/contractors-db.js (279.2 KB)
+Inlining JS:  js/guide-data.js (285.9 KB)
+Inlining JS:  js/electrical-db.js (471.7 KB)
+Inlining JS:  js/simulation-engine.js (74.0 KB)
+Inlining JS:  js/sound-fx.js (17.3 KB)
+Inlining JS:  js/sld-schematic.js (155.2 KB)
+Inlining JS:  js/power-model.js (8.3 KB)
+Inlining JS:  js/app.js (88.3 KB)
+----------------------------------------------------
+SUCCESS: Single-file bundle created at: C:\Users\11\Desktop\PC\shahrivar\solar-app\APP\17\dist\solar-app.html
+Output Size: 2,341,100 bytes (2.23 MB)
+----------------------------------------------------
+
+$ node scripts/verify_step3_bundle.js
+Copied bundle to isolated location: C:\Users\11\Desktop\test-dist-step3\solar-app.html
+Spawned Chrome for Step 3 bundle verification on port 9224...
+=== Step 3 Bundle Runtime Evaluation ===
+{
+  "title": "شبیه‌ساز سه‌بعدی و دیاگرام تک‌خطی سامانه خورشیدی هایبرید ۵ کیلووات | IEC 60364-7-712",
+  "canvasPresent": true,
+  "canvasWidth": 1904,
+  "canvasHeight": 985,
+  "hasSceneInstance": true,
+  "sceneChildrenCount": 62,
+  "gridBadge": "+2200",
+  "pvBadge": "4570",
+  "socBadge": "75%",
+  "epsBadge": "1500"
+}
+=== Full Network Tab Requests ===
+[
+  {
+    "url": "https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/fonts/webfonts/Vazirmatn-Regular.woff2",
+    "type": "Font"
+  },
+  {
+    "url": "https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/fonts/webfonts/Vazirmatn-ExtraBold.woff2",
+    "type": "Font"
+  },
+  {
+    "url": "https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/fonts/webfonts/Vazirmatn-SemiBold.woff2",
+    "type": "Font"
+  },
+  {
+    "url": "https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/fonts/webfonts/Vazirmatn-Bold.woff2",
+    "type": "Font"
+  }
+]
+=== Exceptions Thrown ===
+Zero runtime exceptions thrown!
+Cleaned up temporary isolated test directory.
+```
+
+### Result vs expected
+| Check | Expected | Actual | Pass? |
+|---|---|---|---|
+| Bundle generation | `dist/solar-app.html` created with inlined CSS/JS | Created, 2,341,100 bytes (2.23 MB) | PASS |
+| Execution from external directory | Opens and runs cleanly outside repo root | Loaded from `C:\Users\11\Desktop\test-dist-step3\` with zero missing asset errors | PASS |
+| 3D Scene & Canvas | WebGL canvas renders, Three.js initialized | Canvas 1904x985 present, `sceneInstance: true`, 62 children | PASS |
+| Network Requests | Only external webfont requests to CDN remain | Exactly 4 requests to `cdn.jsdelivr.net` for Vazirmatn fonts | PASS |
+| Console Exceptions | Zero exceptions | Zero runtime exceptions | PASS |
+
+### Surprises / notes
+- `build.js` safely escapes any internal occurrences of `</script>` into `<\/script>` to prevent unexpected early termination of HTML script blocks.
+- Inlined scripts strictly maintain the identical execution order as `index.html`: `three.min.js` → `OrbitControls.js` → `scene-3d.js` → `contractors-db.js` → `guide-data.js` → `electrical-db.js` → `simulation-engine.js` → `sound-fx.js` → `sld-schematic.js` → `power-model.js` → `app.js`.
+- The bundle executes without any ES Module imports or `file://` CORS issues.
+- `dist/` is ignored by Git in `.gitignore` and was not tracked/staged.
+
+### Not done
+None.
+
+### Commit
+`step-3: single-file build script`
