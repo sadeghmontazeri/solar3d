@@ -670,5 +670,107 @@ None.
 ### Commit
 `step-6: SBY input validation + transfer cancellation`
 
+---
+
+## Step 7 — Fix the grid node balance
+**Date:** 2026-09-13T15:27:00-04:00
+**Agent:** Antigravity / Gemini 3.8 Flash (with 3 parallel subagents)
+**Status:** DONE
+
+### What I changed
+- `js/power-model.js`:177-192 — Replaced grid-exchange block with single-counted node balance at BUS-G (`gridPower = normalPower + bypassPower - inverterNetExport`), correctly utilizing `inverterEpsDemand` instead of `epsPower`.
+- `index.html`:156 — Replaced stale hardcoded first-paint text `-720` with `0` for `#hud-grid-p`.
+- `tests/power-model.test.js`:21-127 — Updated test suite with corrected baseline expectations (P1: 0, P2: 2200, P3: 3700, P4: -4951, P5: 0, P6: 4700, P7: 0) and regression guards.
+- `scripts/verify_step7.js`:1-110 — Automated Chrome CDP verification suite checking live HUD grid badge and direction.
+- `build.js` — Regenerated standalone single-file bundle `dist/solar-app.html`.
+
+### Verify output
+```
+$ node tests/power-model.test.js
+====================================================
+RUNNING GOLDEN BASELINE TESTS FOR PURE POWER MODEL
+====================================================
+
+P1 [defaults, SBY=I, QG closed]:
+   grid.p = 0 W | expected = 0 W
+   Status: ✓ PASS
+
+P2 [QG open (REGRESSION GUARD)]:
+   grid.p = 2200 W | expected = 2200 W
+   Status: ✓ PASS
+
+P3 [SBY=II bypass]:
+   grid.p = 3700 W | expected = 3700 W
+   Status: ✓ PASS
+
+P4 [PV surplus export]:
+   grid.p = -4951 W | expected = -4951 W
+   Status: ✓ PASS
+
+P5 [battery discharging]:
+   grid.p = 0 W | expected = 0 W
+   Status: ✓ PASS
+
+P6 [night charge]:
+   grid.p = 4700 W | expected = 4700 W
+   Status: ✓ PASS
+
+P7 [grid dead (REGRESSION GUARD)]:
+   grid.p = 0 W | expected = 0 W
+   Status: ✓ PASS
+
+----------------------------------------------------
+VERIFICATION RESULT: 7 of 7 tests passed.
+----------------------------------------------------
+
+ALL STEP 7 POWER BALANCE TESTS PASSED! ✓
+
+$ node scripts/verify_step7.js
+Spawned Chrome for Step 7 verification on port 9228...
+=== Step 7 HUD Telemetry in Live Chrome ===
+{
+  "hudGridP": "+0",
+  "hudGridDirection": "تزریق صفر (شناور)",
+  "hudPvP": "4570",
+  "hudBatP": "+870",
+  "hudBatSoc": "75%",
+  "hudEpsP": "1500",
+  "hudLoadP": "2200",
+  "gridDotClass": "badge-status-dot "
+}
+
+=== Console Health ===
+Exceptions count: 0
+
+Overall Verdict: PASSED: Grid badge correctly reads 0 W
+```
+
+### Result vs expected
+| Check | Expected | Actual | Pass? |
+|---|---|---|---|
+| P1: Defaults (SBY=I, QG closed) | 0 W | 0 W | PASS |
+| P2: QG open (REGRESSION GUARD) | 2200 W (unchanged) | 2200 W | PASS |
+| P3: SBY=II bypass | 3700 W | 3700 W | PASS |
+| P4: PV surplus export | −4951 W | −4951 W | PASS |
+| P5: Battery discharging (`evening_peak`) | 0 W | 0 W | PASS |
+| P6: Night charge (`night_charge`) | 4700 W | 4700 W | PASS |
+| P7: Grid dead (REGRESSION GUARD) | 0 W (unchanged) | 0 W | PASS |
+| First-paint HUD grid badge | 0 W (not -720 W) | 0 W | PASS |
+| Live browser HUD grid reading | ~0 W (`+0`, floating) | `hudGridP: "+0"`, direction: `تزریق صفر (شناور)` | PASS |
+| Console Exceptions | 0 exceptions | 0 exceptions | PASS |
+
+### Surprises / notes
+- Regression guards P2 (2200 W) and P7 (0 W) were preserved identically.
+- `inverterEpsDemand` was confirmed declared and in-scope at line 118, prior to the grid balance calculation. In position `II` (bypass), `inverterEpsDemand` is 0 W, allowing `bypassPower` (1500 W) to be directly supplied by the grid alongside `normalPower` (2200 W), totaling 3700 W without double-subtracting EPS load.
+- In `app.js:480`, `(p >= 0 ? '+' : '') + p` formats `p = 0` as `"+0"`, and line 487 triggers `تزریق صفر (شناور)` because `|p| <= 50 W`.
+- Three subagents were utilized in parallel to audit the mathematical derivations, inspect the git history, and verify first-paint DOM elements.
+
+### Not done
+None.
+
+### Commit
+`step-7: structural BUS-G node balance fix`
+
+
 
 

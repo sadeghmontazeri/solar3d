@@ -1,4 +1,4 @@
-﻿const assert = require('assert');
+const assert = require('assert');
 const { computePowerModel } = require('../js/power-model.js');
 
 console.log('====================================================');
@@ -26,20 +26,18 @@ const scenarios = [
       irradiance: 850, temperature: 25, normalLoadPower: 2200, criticalLoadPower: 1500, batterySOC: 75,
       operatingMode: 'normal_day', sbyPosition: 'I', breakers: defBreakers, failures: defFailures
     },
-    planExpected: 2200,
-    actualAppExpected: 2200
+    expectedGridP: 0 // PV 4570 covers loads 3700 + battery 870 -> grid 0
   },
   {
     id: 'P2',
-    name: 'QG open',
+    name: 'QG open (REGRESSION GUARD)',
     input: {
       irradiance: 0, temperature: 25, normalLoadPower: 2200, criticalLoadPower: 1500, batterySOC: 75,
       operatingMode: 'normal_day', sbyPosition: 'I',
       breakers: { ...defBreakers, qg_mcb: false, battery_qb: false, battery_ocpd: false },
       failures: defFailures
     },
-    planExpected: 2200,
-    actualAppExpected: 2200
+    expectedGridP: 2200 // Grid supplies normal load directly, inverter isolated -> 2200
   },
   {
     id: 'P3',
@@ -50,8 +48,7 @@ const scenarios = [
       breakers: { ...defBreakers, battery_qb: false, battery_ocpd: false },
       failures: defFailures
     },
-    planExpected: 5900,
-    actualAppExpected: 5900
+    expectedGridP: 3700 // Grid supplies 2200 normal + 1500 bypass critical -> 3700
   },
   {
     id: 'P4',
@@ -60,8 +57,7 @@ const scenarios = [
       irradiance: 1200, temperature: 25, normalLoadPower: 1000, criticalLoadPower: 500, batterySOC: 100,
       operatingMode: 'normal_day', sbyPosition: 'I', breakers: defBreakers, failures: defFailures
     },
-    planExpected: -3500,
-    actualAppExpected: -3951
+    expectedGridP: -4951 // PV 6451.2 - 1500 loads -> -4951 exported
   },
   {
     id: 'P5',
@@ -70,8 +66,7 @@ const scenarios = [
       irradiance: 0, temperature: 25, normalLoadPower: 2200, criticalLoadPower: 1500, batterySOC: 80,
       operatingMode: 'evening_peak', sbyPosition: 'I', breakers: defBreakers, failures: defFailures
     },
-    planExpected: 3900,
-    actualAppExpected: 2200
+    expectedGridP: 0 // Battery discharges 3700, covering full 2200+1500 load -> grid 0
   },
   {
     id: 'P6',
@@ -80,47 +75,37 @@ const scenarios = [
       irradiance: 0, temperature: 25, normalLoadPower: 2200, criticalLoadPower: 0, batterySOC: 50,
       operatingMode: 'night_charge', sbyPosition: 'I', breakers: defBreakers, failures: defFailures
     },
-    planExpected: 6900,
-    actualAppExpected: 6900
+    expectedGridP: 4700 // Normal 2200 + battery charging 2500 -> 4700
   },
   {
     id: 'P7',
-    name: 'grid dead',
+    name: 'grid dead (REGRESSION GUARD)',
     input: {
       irradiance: 850, temperature: 25, normalLoadPower: 2200, criticalLoadPower: 1500, batterySOC: 75,
       operatingMode: 'normal_day', sbyPosition: 'I', breakers: defBreakers,
       failures: { ...defFailures, grid_blackout: true }
     },
-    planExpected: 0,
-    actualAppExpected: 0
+    expectedGridP: 0 // Grid dead -> 0
   }
 ];
 
 let passed = 0;
-let planMatches = 0;
 
 scenarios.forEach(tc => {
   const res = computePowerModel(tc.input);
   const gridP = res.grid.p;
-  const matchesActual = (gridP === tc.actualAppExpected);
-  const matchesPlan = (gridP === tc.planExpected);
+  const matches = (gridP === tc.expectedGridP);
 
-  if (matchesActual) passed++;
-  if (matchesPlan) planMatches++;
+  if (matches) passed++;
 
   console.log(`${tc.id} [${tc.name}]:`);
-  console.log(`   grid.p = ${gridP} W | app.js truth = ${tc.actualAppExpected} W | PLAN.md spec = ${tc.planExpected} W`);
-  console.log(`   Matches verbatim app.js behaviour: ${matchesActual ? '✓ YES' : '✗ NO'}`);
-  if (!matchesPlan) {
-    console.log(`   ⚠️ Discrepancy with PLAN.md hand-calculation: diff = ${gridP - tc.planExpected} W`);
-  }
-  console.log('');
+  console.log(`   grid.p = ${gridP} W | expected = ${tc.expectedGridP} W`);
+  console.log(`   Status: ${matches ? '✓ PASS' : '✗ FAIL'}\n`);
 });
 
 console.log('----------------------------------------------------');
-console.log(`VERIFICATION RESULT: ${passed} of ${scenarios.length} match verbatim app.js behaviour.`);
-console.log(`PLAN.md hand-calculation matches: ${planMatches} of ${scenarios.length}`);
+console.log(`VERIFICATION RESULT: ${passed} of ${scenarios.length} tests passed.`);
 console.log('----------------------------------------------------\n');
 
-assert.strictEqual(passed, scenarios.length, 'All 7 scenarios must match verbatim app.js behaviour');
-console.log('ALL GOLDEN BASELINE BEHAVIOURAL TESTS PASSED! ✓\n');
+assert.strictEqual(passed, scenarios.length, 'All 7 scenarios must pass corrected targets');
+console.log('ALL STEP 7 POWER BALANCE TESTS PASSED! ✓\n');

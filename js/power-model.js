@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Pure power-balance model. No DOM, no globals, no side effects.
  * Extracted verbatim from app.js computeElectricalState() — behaviour must not change.
  */
@@ -175,10 +175,19 @@ function computePowerModel(input) {
   };
 
   // 7. Grid Power Exchange (Import / Export)
+  // Node balance at BUS-G. The grid supplies the loads connected to BUS-G, minus
+  // whatever the inverter exports into BUS-G. normalPower must appear exactly ONCE.
+  // Note: inverterEpsDemand (not epsPower) — in bypass the grid feeds the critical
+  // load directly via bypassPower, and the inverter serves nothing.
   let gridPower = 0;
   if (busGAlive) {
-    const inverterExchange = inverterGridAvailable ? (totalLoadToInverter - totalPvPower - (batPower < 0 ? -batPower : 0) + (batPower > 0 ? batPower : 0)) : 0;
-    gridPower = normalPower + bypassPower + inverterExchange;
+    const inverterNetExport = inverterGridAvailable
+      ? (totalPvPower
+         + (batPower < 0 ? -batPower : 0)   // discharging adds to the bus
+         - (batPower > 0 ? batPower : 0)    // charging draws from the bus
+         - inverterEpsDemand)               // EPS load the inverter itself serves
+      : 0;
+    gridPower = normalPower + bypassPower - inverterNetExport;
     if (f.ct_inverted) {
       gridPower = -gridPower;
     }
