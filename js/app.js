@@ -316,198 +316,51 @@
   // 3. CORE ELECTRICAL SIMULATION ENGINE CALCULATION LOOP
   // ============================================================================
   function computeElectricalState() {
-    const f = state.failures;
+    const input = {
+      irradiance: state.irradiance,
+      temperature: state.temperature,
+      normalLoadPower: state.normalLoadPower,
+      criticalLoadPower: state.criticalLoadPower,
+      batterySOC: state.batterySOC,
+      operatingMode: state.operatingMode,
+      sbyPosition: state.sbyPosition,
+      breakers: state.breakers,
+      failures: state.failures
+    };
+
+    const result = (typeof computePowerModel === 'function')
+      ? computePowerModel(input)
+      : (window.computePowerModel ? window.computePowerModel(input) : null);
+
+    if (result) {
+      state.telemetry.pv = result.pv;
+      state.telemetry.battery = result.battery;
+      state.telemetry.inverter = result.inverter;
+      state.telemetry.grid = result.grid;
+      state.telemetry.eps = result.eps;
+      state.telemetry.normalLoad = result.normalLoad;
+    }
+
+    const batPower = result ? result._internals.batPower : 0;
+    const pv1Healthy = result ? result._internals.pv1Healthy : false;
+    const pv2Healthy = result ? result._internals.pv2Healthy : false;
+    const pv1Power = result ? result._internals.pv1Power : 0;
+    const pv2Power = result ? result._internals.pv2Power : 0;
+    const pv1Voltage = result ? result.pv.pv1Voltage : 0;
+    const pv2Voltage = result ? result.pv.pv2Voltage : 0;
+    const batteryHealthy = result ? result._internals.batteryHealthy : false;
+    const busGAlive = result ? result._internals.busGAlive : false;
+    const gridPower = result ? result.grid.p : 0;
+    const inverterGridAvailable = result ? result._internals.inverterGridAvailable : false;
+    const normalPower = result ? result._internals.normalPower : 0;
+    const bypassPower = result ? result._internals.bypassPower : 0;
     const b = state.breakers;
-
-    // 1. Grid Availability & Bus-G
-    // Q0 protects incoming utility service entrance
-    const utilityPhysicalAvailable = !f.grid_blackout;
-    const q0Closed = (b.q0_mcb !== false) && (b.grid_mcb !== false);
-    const busGAlive = utilityPhysicalAvailable && q0Closed;
-    const gridVoltage = busGAlive ? (f.grid_brownout ? 165 : 230) : 0;
-    state.telemetry.grid.v = gridVoltage;
-    state.telemetry.grid.isBlackout = !busGAlive;
-
-    // QG: Inverter Grid Port MCB
-    // Opening QG disconnects inverter grid port, making grid unavailable to inverter!
-    const qgClosed = (b.qg_mcb !== false) && (b.inv_grid_mcb !== false);
-    const inverterGridAvailable = busGAlive && qgClosed && (state.operatingMode !== 'grid_outage');
-
-    // 2. Solar PV Generation Model (Two Independent Strings)
-    // String 1: DC Isolator 1 + Fuses
-    const pv1Healthy = (b.dc_iso_1 !== false && b.dc_isolator !== false) && !f.dc_arc_fault && !f.blown_pv_fuse && !f.surge_overvoltage;
-    let pv1Power = 0;
-    let pv1Voltage = 0;
-    if (pv1Healthy && state.irradiance > 0) {
-      const tempFactor = 1.0 + (-0.0038 * (state.temperature - 25));
-      const irrFactor = state.irradiance / 1000.0;
-      pv1Power = Math.max(0, 2800 * irrFactor * tempFactor * 0.96);
-      pv1Voltage = Math.round(385 * (1.0 - 0.0028 * (state.temperature - 25)));
-    }
-
-    // String 2: DC Isolator 2 + Fuses
-    const pv2Healthy = (b.dc_iso_2 !== false) && !f.dc_arc_fault && !f.blown_pv_fuse && !f.surge_overvoltage;
-    let pv2Power = 0;
-    let pv2Voltage = 0;
-    if (pv2Healthy && state.irradiance > 0) {
-      const tempFactor = 1.0 + (-0.0038 * (state.temperature - 25));
-      const irrFactor = state.irradiance / 1000.0;
-      pv2Power = Math.max(0, 2800 * irrFactor * tempFactor * 0.96);
-      pv2Voltage = Math.round(385 * (1.0 - 0.0028 * (state.temperature - 25)));
-    }
-
-    const totalPvPower = pv1Power + pv2Power;
-    const effectivePvVoltage = (pv1Voltage > 0 || pv2Voltage > 0) ? Math.max(pv1Voltage, pv2Voltage) : 0;
-    const totalPvCurrent = effectivePvVoltage > 0 ? parseFloat((totalPvPower / effectivePvVoltage).toFixed(1)) : 0.0;
-
-    state.telemetry.pv = {
-      v: effectivePvVoltage,
-      i: totalPvCurrent,
-      p: Math.round(totalPvPower),
-      pv1Power: Math.round(pv1Power),
-      pv2Power: Math.round(pv2Power),
-      pv1Voltage,
-      pv2Voltage
-    };
-
-    // 3. Battery Bank Availability & Voltage
-    const batteryConnected = (b.battery_qb !== false && b.battery_ocpd !== false);
-    const batteryHealthy = batteryConnected && !f.battery_thermal && (state.batterySOC > 10);
-    const batVoltage = batteryConnected ? (48.0 + (state.batterySOC / 100.0) * 5.6) : 0;
-
-    // 4. Inverter Operating Condition & EPS Generation Capability
-    // Inverter can operate ONLY IF at least one energy source is available:
-    // (Grid connected via QG) OR (PV power > 20W) OR (Battery healthy)
-    const pvAvailable = totalPvPower > 20;
-    const inverterPowered = inverterGridAvailable || pvAvailable || batteryHealthy;
-
-    // 5. Load Demands & SBY 3-Position Routing Logic
-    let normalDemand = state.normalLoadPower;
-    let criticalDemand = state.criticalLoadPower;
-    if (f.eps_overload) {
-      criticalDemand = 5600;
-    }
-
-    const qoClosed = b.qo_mcb !== false;
-    const rcdTripped = f.ground_fault;
-
-    let epsPowered = false;
-    let epsPower = 0;
-    let bypassPower = 0;
-
-    if (qoClosed && !rcdTripped) {
-      if (state.sbyPosition === 'I') {
-        // Source I: Inverter EPS Port (via QE MCB)
-        const qeClosed = (b.qe_mcb !== false) && (b.eps_mcb !== false);
-        epsPowered = inverterPowered && qeClosed && (criticalDemand <= 5200);
-        epsPower = epsPowered ? criticalDemand : 0;
-      } else if (state.sbyPosition === 'II') {
-        // Source II: Grid Bypass (via QBP MCB from BUS-G)
-        const qbpClosed = b.qbp_mcb !== false;
-        epsPowered = busGAlive && qbpClosed;
-        epsPower = epsPowered ? criticalDemand : 0;
-        bypassPower = epsPower; // Directly drawn from Grid
-      } else {
-        // Position 0: Fully isolated and de-energized
-        epsPowered = false;
-        epsPower = 0;
-      }
-    }
-
-    state.telemetry.eps = {
-      v: epsPowered ? 230 : 0,
-      p: Math.round(epsPower),
-      isPowered: epsPowered
-    };
-
-    // Normal Loads Status (fed from BUS-G via QN)
-    const normalPowered = busGAlive && (b.qn_mcb !== false);
-    const normalPower = normalPowered ? normalDemand : 0;
-    state.telemetry.normalLoad = {
-      p: Math.round(normalPower),
-      isPowered: normalPowered
-    };
-
-    // 6. Battery Power Dispatch
-    let batPower = 0; // Positive = Charging, Negative = Discharging
-    const inverterEpsDemand = (state.sbyPosition === 'I') ? epsPower : 0;
-    const totalLoadToInverter = inverterEpsDemand + (inverterGridAvailable ? normalPower : 0);
-
-    if (inverterPowered) {
-      if (state.operatingMode === 'normal_day' && inverterGridAvailable) {
-        if (totalPvPower >= totalLoadToInverter) {
-          const surplus = totalPvPower - totalLoadToInverter;
-          if (batteryHealthy && state.batterySOC < 100) {
-            batPower = Math.min(2500, surplus);
-          }
-        } else {
-          const deficit = totalLoadToInverter - totalPvPower;
-          if (batteryHealthy && state.batterySOC > 15) {
-            batPower = -Math.min(3500, deficit);
-          }
-        }
-      } else if (state.operatingMode === 'evening_peak' && inverterGridAvailable) {
-        if (batteryHealthy && state.batterySOC > 20) {
-          batPower = -Math.min(4000, totalLoadToInverter);
-        }
-      } else if (!inverterGridAvailable || state.operatingMode === 'grid_outage') {
-        // Islanding / Off-grid Mode
-        if (totalPvPower >= epsPower) {
-          const surplus = totalPvPower - epsPower;
-          if (batteryHealthy && state.batterySOC < 98) {
-            batPower = Math.min(2500, surplus);
-          }
-        } else {
-          const deficit = epsPower - totalPvPower;
-          if (batteryHealthy) {
-            batPower = -deficit;
-          } else {
-            // Battery tripped/dead: collapse EPS
-            state.telemetry.eps.isPowered = false;
-            state.telemetry.eps.p = 0;
-            state.telemetry.eps.v = 0;
-            epsPowered = false;
-            epsPower = 0;
-          }
-        }
-      } else if (state.operatingMode === 'night_charge' && inverterGridAvailable) {
-        if (batteryHealthy && state.batterySOC < 100) {
-          batPower = 2500;
-        }
-      }
-    } else {
-      // Total source loss: battery cannot charge or discharge
-      batPower = 0;
-    }
-
-    const batCurrent = (batVoltage > 0 && Math.abs(batPower) > 0) ? (Math.abs(batPower) / batVoltage) : 0;
-    state.telemetry.battery = {
-      v: parseFloat(batVoltage.toFixed(1)),
-      i: parseFloat(batCurrent.toFixed(1)),
-      p: Math.round(batPower),
-      soc: Math.round(state.batterySOC),
-      state: !batteryConnected ? 'قطع فیزیکی (QB باز)' : (batPower > 50 ? 'در حال شارژ' : (batPower < -50 ? 'در حال دشارژ' : 'آماده‌به‌کار'))
-    };
-
-    // 7. Grid Power Exchange (Import / Export)
-    let gridPower = 0;
-    if (busGAlive) {
-      const inverterExchange = inverterGridAvailable ? (totalLoadToInverter - totalPvPower - (batPower < 0 ? -batPower : 0) + (batPower > 0 ? batPower : 0)) : 0;
-      gridPower = normalPower + bypassPower + inverterExchange;
-      if (f.ct_inverted) {
-        gridPower = -gridPower;
-      }
-    }
-    state.telemetry.grid.p = Math.round(gridPower);
-
-    // 8. Inverter Overall Telemetry
-    const invFreq = inverterGridAvailable ? 50.0 : (epsPowered && inverterPowered ? 50.0 : 0.0);
-    state.telemetry.inverter = {
-      pOut: Math.round(epsPower + (inverterGridAvailable && gridPower < 0 ? Math.abs(gridPower) : 0)),
-      efficiency: inverterPowered ? 97.4 : 0.0,
-      freq: invFreq,
-      status: !inverterPowered ? 'خاموش / بدون منبع تغذیه' : (!inverterGridAvailable ? (epsPowered ? 'عملکرد جزیره‌ای (EPS)' : 'آماده‌باش جزیره') : 'سنکرون با شبکه')
-    };
+    const f = state.failures;
+    const epsPowered = result ? result._internals.epsPowered : false;
+    const inverterPowered = result ? result._internals.inverterPowered : false;
+    const epsPower = result ? result._internals.epsPower : 0;
+    const normalPowered = result ? result._internals.normalPowered : false;
+    const groundFaultActive = f.ground_fault;
 
     // Update battery SOC integration
     if (batPower !== 0) {
