@@ -609,4 +609,66 @@ None.
 ### Commit
 `step-5: implement _animateCamera + guard non-viewpoint buttons`
 
+---
+
+## Step 6 — SBY: reject invalid input, and cancel stale transfers
+**Date:** 2026-09-13T15:15:30-04:00
+**Agent:** Antigravity / Gemini 3.8 Flash
+**Status:** DONE
+
+### What I changed
+- `js/scene-3d.js`:3744-3750 — Added input validation guard `if (!['I', '0', 'II'].includes(pos))` to `setSbyPosition3D` to reject undefined/invalid inputs from 3D raycaster clicks.
+- `js/app.js`:253 — Added module-scope counter `let sbyTransferGeneration = 0;`.
+- `js/app.js`:2068, 2085 — At top of `onSbyStateChanged`, incremented `const myGeneration = ++sbyTransferGeneration;` and added guard `if (myGeneration !== sbyTransferGeneration) return;` at the start of the 80ms BBM `setTimeout` callback.
+- `scripts/verify_step6.js`:1-140 — Automated Chrome CDP test runner verifying both the 3D raycaster dial guard and rapid transfer cancellation race condition.
+
+### Verify output
+```
+$ node scripts/verify_step6.js
+Spawned Chrome for Step 6 verification on port 9227...
+=== TEST 1: SBY Dial Click in 3D (Invalid Input Guard) ===
+Test 1 Results: {
+  "beforeState": "I",
+  "afterState": "I",
+  "guardPreservedState": true,
+  "normalTransitions": {
+    "state0": "0",
+    "stateII": "II",
+    "stateI": "I"
+  }
+}
+
+=== TEST 2: Rapid SBY Transfer Cancellation (Stale Callback Invalidation) ===
+Test 2 Results: {
+  "final3dState": "0",
+  "cancelledStaleTransfer": true
+}
+
+=== CONSOLE WARNINGS CHECK ===
+SBY invalid position warnings captured: 1
+ - [scene-3d] setSbyPosition3D: invalid position {"type":"undefined"} - ignored
+Exceptions thrown count: 0
+
+Overall Verdict: ALL CHECKS PASSED!
+```
+
+### Result vs expected
+| Check | Expected | Actual | Pass? |
+|---|---|---|---|
+| 3D SBY Dial Click | Warning logged, state remains uncorrupted (`'I'`) | State stayed `'I'`, warning logged: `[scene-3d] setSbyPosition3D: invalid position {"type":"undefined"} - ignored` | PASS |
+| Normal SBY transitions (I / 0 / II) | Positions switch cleanly | Transitions to `'0'`, `'II'`, `'I'` all succeeded | PASS |
+| Rapid transfer cancellation (I → II → 0 < 80ms) | Final position is `'0'`, does NOT snap back to `'II'` | Final position is `'0'`, stale transfer callback invalidated | PASS |
+| Console Exceptions | 0 exceptions | 0 exceptions thrown | PASS |
+
+### Surprises / notes
+- In Test 1, raycaster toggle on 3D SBY dial called `toggleBreaker3D('sby_switch')` passing `state = undefined`. The new guard caught it immediately, preserving switchgear state at `"I"` and logging the warning without breaking the circuit state.
+- In Test 2, rapid command dispatch (I → II followed within 20ms by 0) verified that `myGeneration !== sbyTransferGeneration` prevented the 80ms timeout from overwriting the newer state '0' back to 'II'.
+
+### Not done
+None.
+
+### Commit
+`step-6: SBY input validation + transfer cancellation`
+
+
 

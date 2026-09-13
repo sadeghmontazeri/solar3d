@@ -3744,6 +3744,10 @@ class HybridSolar3DScene {
   setSbyPosition3D(pos, origin = 'user') {
     const sw = this.switchgear['sby_switch'];
     if (!sw) return;
+    if (!['I', '0', 'II'].includes(pos)) {
+      console.warn('[scene-3d] setSbyPosition3D: invalid position', pos, '- ignored');
+      return;
+    }
     if (sw.state === pos && origin === 'orchestrator') return;
     sw.state = pos;
     // 'I' = -Math.PI / 4 (EPS), '0' = 0 (OFF), 'II' = Math.PI / 4 (Grid Bypass)

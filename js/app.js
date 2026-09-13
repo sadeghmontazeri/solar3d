@@ -250,6 +250,7 @@
   // ============================================================================
   // 2. SIMULATION ELECTRICAL STATE & POWER BALANCE MODEL
   // ============================================================================
+  let sbyTransferGeneration = 0;
   const state = {
     // Environmental & System Inputs
     irradiance: 850,       // W/m2 (0 - 1200)
@@ -2065,6 +2066,7 @@
       renderInspectorComponent(id);
     },
     onSbyStateChanged: (pos, origin) => {
+      const myGeneration = ++sbyTransferGeneration;
       const oldPos = state.sbyPosition;
       if (oldPos === pos) return;
 
@@ -2081,6 +2083,7 @@
         updateHUDView();
 
         setTimeout(() => {
+          if (myGeneration !== sbyTransferGeneration) return;
           state.sbyPosition = pos;
           sound.playSbySwitch(pos);
           if (origin !== '3d' && window.sceneInstance?.setSbyPosition3D) {
