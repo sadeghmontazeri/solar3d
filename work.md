@@ -531,3 +531,82 @@ None.
 ### Commit
 `step-4: inline Vazirmatn font, remove CDN dependency`
 
+---
+
+## Step 5 — Fix `setCameraFrontView()`
+**Date:** 2026-09-13T15:04:30-04:00
+**Agent:** Antigravity / Gemini 3.8 Flash
+**Status:** DONE
+
+### What I changed
+- `js/scene-3d.js`:3800-3818 — Added `_animateCamera(targetPos, targetLookAt, durationMs = 1200)` to `HybridSolar3DScene` directly before `setCameraFrontView()`, animating camera position and controls lookAt via `this.cameraTransition`.
+- `js/app.js`:587 — Added `if (!viewpoint) return;` guard inside `camButtons.forEach` click listener to ignore `.btn-viewpoint` buttons lacking `data-viewpoint`.
+- `scripts/verify_step5.js`:1-140 — Created automated Chrome CDP verification runner testing Front View glide, 5 non-preset buttons, preset activation, and console warning counts.
+
+### Verify output
+```
+$ node scripts/verify_step5.js
+Spawned Chrome for Step 5 verification on port 9226...
+=== TEST 1: Click Front View (btn-camera-front) ===
+Camera pos before: { x: 0, y: 3.799999999999999, z: 6.8 }
+Front View click result: {
+  "transitionActive": true,
+  "targetPos": {
+    "x": 0.5,
+    "y": 2.3,
+    "z": 4.2
+  },
+  "targetLookAt": {
+    "x": 0.5,
+    "y": 2.3,
+    "z": -2.18
+  },
+  "duration": 900
+}
+Camera pos after transition: { x: 0.5, y: 2.3, z: 4.2 }
+
+=== TEST 2: Click the other 5 buttons without data-viewpoint ===
+ - Button #btn-camera-reset: clicked
+ - Button #btn-toggle-enclosure-shell: clicked
+ - Button #btn-toggle-dc-door: clicked
+ - Button #btn-toggle-mdb-door: clicked
+ - Button #btn-toggle-eps-door: clicked
+
+=== TEST 3: Click a real viewpoint preset (pv / آرایه خورشیدی) ===
+Real preset click result: {
+  "preset": "pv",
+  "transitionActive": true,
+  "targetPos": {
+    "x": 0,
+    "y": 7,
+    "z": 3.8
+  }
+}
+
+=== VERIFICATION RESULTS ===
+Unknown camera preset warnings count: 0
+Total console exceptions thrown: 0
+
+Overall Verdict: ALL CHECKS PASSED!
+```
+
+### Result vs expected
+| Check | Expected | Actual | Pass? |
+|---|---|---|---|
+| Click Front View (`🎯 نمای روبرو`) | Camera glides to front view, zero TypeError | Glided to `{x: 0.5, y: 2.3, z: 4.2}`, 0 exceptions | PASS |
+| Warning on Front View click | No `Unknown camera preset: null` warning | 0 warnings logged | PASS |
+| Other 5 non-viewpoint buttons | Function normally without preset warnings | All 5 clicked cleanly with 0 warnings | PASS |
+| Real viewpoint preset click | Preset transition still works | `pv` preset transitioned to rooftop camera `{x: 0, y: 7, z: 3.8}` | PASS |
+| Overall console cleanliness | 0 exceptions, 0 preset warnings | 0 exceptions, 0 preset warnings | PASS |
+
+### Surprises / notes
+- `btn-camera-front` shares class `btn-viewpoint` in `index.html` but lacks `data-viewpoint`. The combined fix (guard in `app.js` + `_animateCamera` in `scene-3d.js`) cleanly addresses both the warning and the runtime crash simultaneously.
+- Golden baseline tests (`tests/power-model.test.js`) and standalone build (`build.js`) continue to pass 100%.
+
+### Not done
+None.
+
+### Commit
+`step-5: implement _animateCamera + guard non-viewpoint buttons`
+
+

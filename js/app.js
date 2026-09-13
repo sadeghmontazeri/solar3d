@@ -584,6 +584,7 @@
         btn.classList.add('active');
 
         const viewpoint = btn.getAttribute('data-viewpoint');
+        if (!viewpoint) return; // button shares the class but is not a viewpoint
         const mappedPreset = presetMap[viewpoint] || viewpoint;
 
         if (window.sceneInstance && typeof window.sceneInstance.setCameraPreset === 'function') {

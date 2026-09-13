@@ -3797,6 +3797,24 @@ class HybridSolar3DScene {
     return this.setBreakerState3D(id, state, 'user');
   }
 
+  /**
+   * Animates the camera to an arbitrary position/target using the existing
+   * cameraTransition machinery (same path as setCameraPreset).
+   */
+  _animateCamera(targetPos, targetLookAt, durationMs = 1200) {
+    this.cameraTransition.active = true;
+    this.cameraTransition.startTime = performance.now();
+    this.cameraTransition.duration = durationMs;
+    this.cameraTransition.startPos.copy(this.camera.position);
+    this.cameraTransition.targetPos.copy(targetPos);
+    if (this.controls) {
+      this.cameraTransition.startLookAt.copy(this.controls.target);
+    } else {
+      this.cameraTransition.startLookAt.set(0, 0, 0);
+    }
+    this.cameraTransition.targetLookAt.copy(targetLookAt);
+  }
+
   setCameraFrontView() {
     this._animateCamera(
       new THREE.Vector3(0.5, 2.3, 4.2),
