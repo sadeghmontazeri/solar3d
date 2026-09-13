@@ -1,0 +1,435 @@
+# HISTORY
+
+Append-only project log. **Never edit or delete another agent's entry.**
+Add new entries at the **bottom**, under your own dated heading.
+
+Every item carries a status:
+
+| Status | Meaning |
+|---|---|
+| `PROPOSED` | An agent suggests it. Not agreed. Do not implement. |
+| `APPROVED` | **Only the project owner sets this.** Cleared for implementation. |
+| `DONE` | Implemented and merged. |
+| `REJECTED` | Considered and declined — keep the entry, note the reason. |
+
+**Never commit credentials, API keys, tokens, or `.env` files.** This application
+requires none.
+
+---
+
+## 2026-09-13T12:44:17-04:00 — agent: `claude-opus-5` (Claude Code) — Planning review #1
+
+**Phase:** Planning. **No application code was modified.** Only `Ideas.md` and this file
+were created.
+
+### Context
+
+Owner's instruction: review architecture, behaviour, and electrical logic; propose a
+redesign; do not implement yet; wait for a consolidated plan merged with a second agent's
+proposal.
+
+Owner's narrowing note, recorded verbatim in effect:
+> "i will change sld and cabling later — i have sld for it — i just want you to look at
+> logic and improvement of app in 3d"
+
+→ Accordingly, SLD *content* redesign is **out of scope** for this agent. Cabling is
+addressed only as **mechanism** (making the owner's later cabling edits cheap), not as
+redrawn cable paths.
+
+### Method and its limits
+
+Static reading of all source files, plus numeric replication of `computeElectricalState()`
+arithmetic in Node.
+
+**Limitation to weigh:** no live browser run was obtained — the preview surface renders
+`file://` pages as static snapshots without executing scripts. Runtime FPS, visual
+appearance, and init-time exceptions are therefore **unverified**. Findings below are
+labelled accordingly.
+
+### Findings — VERIFIED (from code / reproduced numerically)
+
+| # | Finding | Evidence |
+|---|---|---|
+| F1 | **Two simulation engines; the better one is dead code.** `simulation-engine.js` (1,861 lines) has NOCT cell temp, per-string I-V solve, LiFePO4 OCV curve, `dt_s` stepping, efficiency chain, inverter state machine, latching faults, RCD sim, TN/TT topologies. Registered on `window`, **never instantiated**. `app.js` runs a cruder inline model instead. | `grep "new HybridSolarSimulationEngine"` → 0 hits |
+| F2 | **Grid power double-counts the non-critical load.** At defaults the app shows **2200 W import** where the true node balance is **0 W** — error is exactly `normalPower`. A third value (`-720 W`) is hardcoded in `index.html` for first paint. | `app.js` ~line 490; reproduced in Node |
+| F3 | **No energy conservation.** `efficiency: 97.4` is displayed but multiplies nothing. DC→AC and battery round-trip losses absent. | `app.js` |
+| F4 | **No inverter clipping.** G=1200/T=−20 yields **7554 W DC** into a 5 kW inverter, unlimited — contradicting the app's own DC/AC-ratio calculator tab. | computed |
+| F5 | **String voltage inconsistent:** engine 385 V vs calculator 8 × 41.2 = 329.6 V. | `app.js` vs `index.html` |
+| F6 | **Fault model non-physical and non-latching.** `blown_pv_fuse`/`dc_arc_fault`/`surge_overvoltage` each kill *both* strings despite single-string labels; `grid_brownout` sets 165 V with no system response; `ct_inverted` only flips a displayed sign; isolator logic asymmetric between strings; **nothing latches** — clearing a toggle instantly restores service, teaching the opposite of real MCB/RCD practice. | `app.js` |
+| F7 | **SOC shown twice with different values** — sim integrates `state.batterySOC` at 10 Hz; slider/label written only at init and reset. | `app.js:884` |
+| F8 | **Bottom filter bar (8 buttons) does nothing to the 3D view** — only calls `SLDSchematic.setFlowFilter()`. | `app.js` ~851 |
+| F9 | **Six 3D capabilities are built but unwired:** `isolateSubsystem()` (0 callers), `setXRayMode()` (reachable only via an unexposed preset), `setSunIrradiance()` (0), `updateSmartMeterLCD()` (0), `circuitGraph` (populated by 39 conductors, never read), and 4 camera presets with no button. **Much of what the owner asked for already exists and is simply disconnected.** | `grep` counts |
+| F10 | **Cable routing is hardcoded and topologically wrong.** 10 literal `Vector3` waypoint lists, unrelated to equipment geometry; Catmull-Rom splines cut diagonally through open air; **cables pass *through* enclosures rather than terminating in them** (one continuous tube with "box top entry" and "box bottom exit" points) — this is the root cause of unreadable cabinet interiors; single tube per circuit hides +/− and L/N/PE; cables added to scene root so they cannot be layered; earthing is a stub with no equipotential star. | `scene-3d.js:3326` |
+| F11 | **73 always-visible controls**, 11 modals, 71 inline styles. Chrome covers **~50 %** of a 1920×1080 screen with the inspector open (~34 % closed); on 1366×768 the 3D view shrinks to ~610 px wide. | counted |
+| F12 | **Accessibility absent:** zero `aria-*`, zero `role=`, 3 `:focus` rules in 1,800 CSS lines, no keyboard model, no modal focus traps, emoji-only icon semantics, no text alternative for the WebGL canvas. | counted |
+| F13 | **One offline blocker:** `css/styles.css:7` `@import` of the Vazirmatn font from jsDelivr — the **only** external reference in the codebase. | `css/styles.css:7` |
+| F14 | **Single-file bundling is low-risk:** no ES modules, no `fetch`/`XHR`, all textures procedural on canvas, all geometry code-generated, all audio synthesised, all SLDs inline SVG. Concatenation in existing script order works. ~2.5 MB with font inlined. | verified |
+| F15 | **Not a git repository.** No `.git`; `HISTORY.md` absent until now. `Ideas.md` + `gpt-ideas.md` exist and are empty. `debug.log` records "GPU stall due to ReadPixels"; `updateOLED` is already throttled to 4 Hz in response. | filesystem |
+
+### Findings — ASSUMED (not verified)
+
+- Runtime behaviour, FPS, and visual correctness of the current cable paths.
+- That the app initialises without exception (no live run obtained).
+- That the 5 non-`SLD-01` diagrams render but remain static (`sld-schematic.js:2206`
+  gates live telemetry to `SLD-01` only).
+- 3D world units (metres?) — inferred from magnitudes, undocumented.
+- `electrical-db.js` / `guide-data.js` / `contractors-db.js` reviewed structurally only;
+  treated as content, not logic.
+
+### Proposals — all `PROPOSED`, none approved
+
+| ID | Proposal | Status |
+|---|---|---|
+| P-01 | Promote `simulation-engine.js` to the live engine behind `?engine=v2`; delete inline `computeElectricalState()`; `app.js` becomes a thin view-controller | `PROPOSED` |
+| P-02 | Fix the grid node balance (F2); apply efficiencies (F3); add inverter clipping (F4); unify string voltage (F5) | `PROPOSED` |
+| P-03 | Make faults per-string, physical, and **latching with an explicit Reset** (F6) | `PROPOSED` |
+| P-04 | Single source of truth for SOC (F7) | `PROPOSED` |
+| P-05 | Declarative topology model (`js/model/system.model.js`) driving solver + 3D + inspector; adding a component becomes a data edit | `PROPOSED` |
+| P-06 | Orthogonal (Manhattan) cable auto-router consuming terminal anchors, replacing hardcoded waypoints; conductor bundles showing +/− and L/N/PE | `PROPOSED` |
+| P-07 | Terminal registry per enclosure; cables terminate on pickable named terminals (the cabinet-comprehension fix) | `PROPOSED` |
+| P-08 | Wire the six existing-but-unused 3D capabilities (F9); add an explode slider and "trace this circuit" from `circuitGraph` | `PROPOSED` |
+| P-09 | UI shell rebuild: 73 → ~12 always-visible controls; Tools menu; single power-flow strip; Layers popover that actually drives the 3D; collapsible right rail | `PROPOSED` |
+| P-10 | Accessibility pass: roles, focus traps, `:focus-visible`, `aria-live`, `prefers-reduced-motion`, text description of 3D state | `PROPOSED` |
+| P-11 | `build.js` → single standalone `dist/solar-app.html` with base64-inlined font; source stays multi-file | `PROPOSED` |
+| P-12 | Split `app.js` (2,309 lines) and `scene-3d.js` (4,387 lines) into modules on day 0 as **pure moves, no logic change** | `PROPOSED` |
+| P-13 | `?selftest=1` in-page assertion harness: energy-balance invariants, fault matrix, router sanity. No framework, runs offline | `PROPOSED` |
+
+### Risks recorded
+
+- **R1 (High)** — the engine promoted by P-01 has **never executed**. Requires a parity
+  harness and a full day, not an hour.
+- **R2 (High)** — re-routing cables (P-06) can visibly break the scene. Build alongside the
+  old paths, compare, then cut over.
+- **R3 (High)** — the owner edits SLD + cabling in parallel with agents. Mitigated by file
+  ownership (below).
+- **R4 (High)** — merge conflicts in 4,000-line files are unresolvable; hence P-12 on day 0.
+- **R5 (Medium)** — `isolateSubsystem()` is itself buggy (mutates *shared* materials;
+  depth-1 descendant test). **Must be rewritten before being exposed**, or naive wiring will
+  dim nested children and corrupt materials globally.
+- **R6 (Medium)** — ReadPixels GPU stalls return if further canvas textures are wired
+  without throttling.
+- **R7 (Low)** — ~2.5 MB single-file parse time; mitigate by lazy-parsing the three large
+  content DBs if needed.
+
+### Proposed next steps
+
+1. **Owner:** 30-second verification in a real browser — confirm F2 (grid badge reads
+   ~2200 W import at defaults) and F7 (SOC badge drifts while the slider stays at 75 %).
+   These either confirm or overturn the highest-priority findings.
+2. **Owner:** consolidate this proposal with the second agent's (`gpt-ideas.md`) and mark
+   the agreed subset `APPROVED` in a new entry below.
+3. **Then, and only then:** begin Day 0 (git init, build script, font inlining, module split).
+
+### Proposed workflow to avoid agent conflicts
+
+- `git init` → private GitHub repo.
+  `.gitignore`: `node_modules/`, `dist/`, `debug.log`, `scratch/`, `scripts/screenshot-*.png`
+- **Do not commit `dist/solar-app.html`** — a 2.5 MB build output guarantees a merge conflict
+  every time. Build locally or attach to a Release.
+- **File ownership** (the actual conflict-avoidance mechanism):
+
+  | Owner | Files |
+  |---|---|
+  | Project owner | `js/sld-schematic.js`, `data/cabling.js` |
+  | Agent A — `claude-opus-5` | `js/sim/*`, `js/model/*` |
+  | Agent B — `gpt-*` | `js/ui/*`, `css/*` |
+  | Shared — PR review required | `index.html`, `js/scene-3d.js` |
+
+- One short-lived branch per agent per day: `agent/<name>/<ISO-date>-<topic>`.
+  Rebase on `main` before PR; squash-merge.
+- Ideas files stay one-per-agent: `Ideas.md` (claude), `gpt-ideas.md` (gpt).
+- `HISTORY.md` is append-only; never edit another agent's block.
+- Commit and push at the end of every working block — never leave uncommitted work on one
+  machine when working across devices.
+
+**Detail:** see [Ideas.md](Ideas.md).
+
+---
+
+
+
+# Project history
+
+## 2026-09-13T12:41:35-04:00 — Codex-GPT6-/root
+
+Status: REVIEWED / PROPOSED. Independent planning contribution; implementation awaits the user's consolidated plan.
+
+### User-confirmed scope
+
+- Review `C:\Users\11\Desktop\PC\shahrivar\solar-app\APP\17` without changing application code.
+- Prioritize desktop 3D usability, clearer cabinets, on-demand technical information, extensibility, and a standalone offline HTML release.
+- The user already has an SLD and will revise SLD/cabling later. Preserve those boundaries.
+- Write dated ideas in `gpt-ideas.md` and retain history. Prepare for 3–4 days of GitHub work across devices; do not commit credentials or secrets.
+
+### Verified findings and evidence
+
+- The active `app.js` implements one hybrid system with five scenarios and its own calculation loop. The separate simulation engine is loaded but not instantiated by the app. Existing registry/connectivity evaluation is hard-coded.
+- `node scripts/verify-all.js` passed, including 9/9 engine/database scenarios. This does not establish live-controller or electrical compliance correctness.
+- Read-only Node evaluation of unchanged app code, with DOM initialization suppressed, reproduced: 5900 W grid import for 3700 W loads without PV/battery; bypass power attributed to inverter output; 165 V grid bypass shown as 230 V at loads; opening `eps_rcd` not disconnecting aggregate EPS; and 6451 W output reported for the 5 kW model at high irradiance.
+- Isolated scene-method checks reproduced undefined SBY state from the generic 3D toggle and a missing `_animateCamera` call from Front View.
+- Source review found SLD-only bottom filters, flow-direction sign mismatches, fixed conductor telemetry, duplicated controls, and a remote font dependency. Existing procedural cabinets/doors/terminals are valuable assets to retain.
+- `git rev-parse --show-toplevel` reported no repository. `gpt-ideas.md` was empty and `HISTORY.md` was absent before this contribution. `Ideas.md` belongs to the separate proposal and was left untouched.
+- Browser security policy blocked opening the local HTML URL. No browser workaround was attempted. The September 8 screenshot was inspected as historical evidence; current rendering, FPS, and cross-device behavior are unverified.
+
+### Proposed decisions — not approved
+
+1. One simulation state drives UI, 3D, and SLD adapters; reconcile implementations against real controller cases before choosing the authority.
+2. Compact header, minimal summary strip, collapsible scenario controls, one contextual inspector, searchable reference content.
+3. Single click selects; explicit actions operate switches. Reuse cabinet geometry with focus/interior/connection views and selected-path tracing.
+4. Stable component/terminal/connection IDs; keep topology separate from route geometry and use the user's future SLD for electrical changes.
+5. Maintain modular sources and build one HTML artifact with embedded assets/libraries/fonts. Prove offline packaging early; validate hybrid before adding distinct profiles.
+
+### Proposed next steps and coordination
+
+Compare `gpt-ideas.md` with the other agent's proposal; consolidate layout, state ownership, profile scope, and acceptance criteria. Only then begin implementation: Day 1 baseline/logic/packaging; Day 2 UI and one cabinet; Day 3 broader inspection and validated profiles; Day 4 compatibility/regression buffer.
+
+Use separate branches/clones or worktrees, one owner per shared file, and one integrator for merges and generated HTML. Commit/push before device handoff; record branch and commit. Append dated agent entries without rewriting other entries. Inspect staged diffs and exclude secrets, private logs, and local-only artifacts.
+
+Deliverable: `gpt-ideas.md` contains evidence, priorities, architecture, feasibility risks, phases, and acceptance criteria. No application implementation, repository initialization, commit, or remote publication was performed.
+
+### 2026-09-13T12:51:03.4304105-04:00 — Codex-GPT6-/root — VERIFIED
+
+Saved the planning contribution to gpt-ideas.md and HISTORY.md. SHA-256 comparison of 39 pre-existing non-planning files found no changes. File-specific permission allowed updating gpt-ideas.md; parent-directory permission was subsequently required to create the previously absent HISTORY.md. Only the two requested planning documents were written in the application folder.
+
+---
+
+## 2026-09-13T13:05:00-04:00 — agent: `claude-opus-5` (Claude Code) — Consolidation review #2 — `PROPOSED`
+
+**Phase:** Planning. **No application code modified.** Only `Ideas.md` (rewritten to v2) and
+this entry. Both prior HISTORY entries preserved unmodified.
+
+### Scope
+
+Cross-checked `gpt-ideas.md` (Codex-GPT6), the builder agent's handoff report, and a third-agent
+comparison against the actual source. Claims were verified, not accepted.
+
+### Key new finding — reconciles all three reports
+
+**The test suite passes 26/26 and 9/9 while never executing the code the browser runs.**
+`scripts/verify-all.js` and `scripts/test-scenarios.js` require `js/electrical-db.js` and
+`js/simulation-engine.js`; `scripts/verify_dc_box.js` only string-matches `app.js` text.
+**No test file loads `js/app.js`.** So the suite validates the dead engine exclusively.
+
+This is simultaneously consistent with: the builder's "all verified", GPT's "passing its tests
+does not validate the live app", and my "the live engine is wrong by 2200 W".
+**Useful consequence:** the 9 scenarios are an executable acceptance spec for the engine we want
+to promote — which lowers, not raises, the risk of P-01, provided an adapter sits between.
+
+### GPT claims verified TRUE (credited)
+
+| Claim | Verification |
+|---|---|
+| `setCameraFrontView()` throws — `_animateCamera` absent | Confirmed. `grep -c _animateCamera` = 1, and that one hit is the call itself (`scene-3d.js:3800`). The Front View button is broken. |
+| `toggleBreaker3D('sby_switch')` passes undefined | Confirmed, and worse than stated: `sbyDial.userData.action = 'toggle'` (`scene-3d.js:2707`), so a plain 3D click reaches it, sets `sw.state = undefined`, matches no angle branch, and emits `switchChange {state: undefined}`. **Exploration corrupts switch state.** |
+| Grid import 5900 W for 3700 W demand | Reproduced exactly. Same root cause as my 2200 W default case — `normalPower` double-count, error always equals `normalPower`. |
+| Bypass power attributed to inverter output | Reproduced: SBY=II, no PV/battery → inverter reports 1500 W. |
+| `eps_rcd` open leaves EPS powered | Confirmed. `eps_rcd`, `qpv_isolator`, `fspd_mcb` are declared in `state.breakers` and **never read** by the live engine. `eps_rcd` is the life-safety RCD. |
+| Ratings conflict (2x2800/385 V vs 2x6x450/41.5 V) | Confirmed — and there is a third set in the calculator tab (Ns=8 x 41.2 = 329.6 V). |
+| Duplicate sound engine | Directionally right, class name differs: `sound-fx.js` defines `SoundEffectsEngine`/`window.soundFX` and **`app.js` never references it**, using its own `SynthesizedSoundEngine`. `sound-fx.js` (18 KB) is dead code. |
+
+### Builder handoff report — four claims contradicted by the source
+
+1. "fonts are local, no runtime internet dependency" — **false**; `css/styles.css:7` imports
+   Vazirmatn from jsDelivr. The sole external reference in the codebase.
+2. `simulation-engine.js` described as "the logical heart of the system" — **false**; never
+   instantiated.
+3. "26/26 + 9/9 verified" — true, but see above: wrong target.
+4. `sound-fx.js` listed as an active module — dead.
+
+Treat the handoff report as a reliable **inventory**, not as **verification**.
+
+### Positions changed from review #1
+
+| # | Change | Reason |
+|---|---|---|
+| 1 | **P-06 Manhattan auto-router — WITHDRAWN from the 3–4 day scope.** Replaced by endpoint-to-terminal-anchor binding only. | GPT and the third agent are right: collision-aware 3D pathfinding is multi-week, and the owner is revising cabling anyway. The comprehension value is in the anchors, not the algorithm. Router deferred as optional later work. |
+| 2 | **Adopted "click selects, explicit action operates" as a hard requirement, raised to day 2.** | Missed in review #1. It is the root cause of the verified SBY state-corruption bug, so it is a correctness requirement, not UX polish. |
+| 3 | **Engine promotion reframed around an adapter, gated by the existing 9 scenarios.** | GPT correctly warned against a blind swap; the UI depends on the old field shapes. |
+| 4 | **Single-file offline build moved from day 0/4 to be *proved* on day 1.** | Both other reviews treat offline packaging as the highest-uncertainty deliverable. |
+
+### Positions retained
+
+Numeric diagnosis of the grid double-count (E2); the six unwired 3D capabilities (V4) as the
+cheapest high-value work; latching faults + explicit Reset (E6); the font blocker (S3);
+73 -> ~12 control reduction (S1).
+
+### Adopted from GPT verbatim
+
+200 % browser-zoom and 1366x768 reachability criteria; second-PC network-disabled offline test
+with recorded browser versions; 30 FPS floor against an agreed reference PC; distinguishing
+*unknown / de-energized / energized-no-flow / isolated*; never rendering reference values as
+measurements; classic (non-module) bundle to avoid file-URL CORS.
+
+### Status of all proposals
+
+P-01..P-05 and P-07..P-13 from review #1 remain `PROPOSED`, as amended above.
+**P-06 (auto-router) is `REJECTED` by its own author** for this iteration; the surviving part is
+endpoint anchor binding, folded into P-07.
+
+### Proposed next step
+
+**Nobody has run this application in a browser** — not me, not GPT, and on the evidence not the
+builder since its last edits. Before any implementation, the owner should spend ten minutes
+confirming five items in a real browser with DevTools: grid badge ~2200 W at defaults; SOC badge
+drifting while the slider stays at 75 %; `_animateCamera` TypeError on Front View; SBY dial
+click behaviour; RCD switch having no electrical effect. Any failure should be reported so the
+affected section is re-derived rather than built upon.
+
+Then: consolidate, mark the agreed subset `APPROVED`, and begin Day 1.
+
+**Detail:** see [Ideas.md](Ideas.md).
+
+---
+
+---
+
+## 2026-09-13T13:18:46-04:00 — agent: `claude-opus-5` (Claude Code) — Correction round #3 — `PROPOSED`
+
+**Phase:** Planning. **No application code modified.** Only `Ideas.md` (v2 -> v3) and this entry.
+All prior entries preserved unmodified. Per append-only protocol, corrections are recorded here
+as a new entry rather than by editing review #2.
+
+### Summary
+
+Astra (Codex-GPT6) challenged four conclusions in my review #2. I tested each against the source
+rather than accepting or dismissing them. **All four challenges are correct.** Two of my
+recommendations would have caused regressions if implemented.
+
+### Corrections to my own review #2
+
+| ID | My v2 claim | Verified reality | Impact |
+|---|---|---|---|
+| C1 | E2 grid double-count is "a one-line fix, XS effort, rank #1" | **Conditional bug.** With QG open, `inverterExchange` is forced to 0 and the formula is *correct* (2200 W import, true). The defect appears only when `inverterGridAvailable = true`. Removing `normalPower` unconditionally **breaks the correct path.** | **Would have caused a regression.** Fix is a structural BUS-G node balance, effort M, requiring multi-path tests. Verified correct in both cases. |
+| C2 | "The remaining work is the adapter, not the physics" | **False.** Executed `simulation-engine.js` directly: (N1) SBY=II bypass with 1800 W normal + 1200 W critical reports `gridPortPower_W=1800`, `criticalLoadsPower_W=0`, `totalLoadsPower_W=1800` — the 1200 W bypass load vanishes (`572, 581, 858-859`); (N2) `criticalLoadsVoltage_V=230` downstream of an open `qoBreaker`; (N3) `setFault(RCD_TRIP,false)` clears the trip with no independent reset — **it does not latch**, contradicting my v1/v2 assertion. | **P-01 becomes conditional, not scheduled.** My latching claim was stated as verified but was never executed. |
+| C3 | The 9 scenarios are "an executable acceptance specification" that de-risks promotion | The underlying finding stands (no test loads `js/app.js`), but the suite **passes while N1-N3 are present**. Tests that miss a 1200 W accounting error are a starting point, not a gate. | Over-claim withdrawn. |
+| C4 | `qpv_isolator` declared but never read -> inert | Grep correct, conclusion wrong. `app.js:2265-2270` aliases `qpv_isolator` -> `dc_isolator` + `dc_iso_1`, which the solver does read. **It works.** | Finding amended to 2 of 3. **`eps_rcd` and `fspd_mcb` still stand** — `eps_rcd` aliases only to `sld-rcd`; `fspd_mcb` is absent from the map. Astra concurs. |
+
+Smaller corrections accepted: `sound-fx.js` is unused but **not inert** (singleton at line 564;
+constructor calls `_bindGestureUnlock()` and registers listeners); `verify_dc_box.js` uses
+`vm.Script` to syntax-check, so the precise claim is "no test exercises live controller
+behaviour"; "zero accessibility" was too strong (native controls work — the real gaps are
+keyboard reach, naming, focus management, state text); clipping criteria must name the port and
+conversion path rather than comparing array DC to rated AC; the "<20 ms" scenario is a label,
+not a measurement.
+
+### New defect found this round
+
+**V10 — SBY late-callback race.** `app.js:2213-2245`: break-before-make uses
+`setTimeout(..., 80)` with `pos` captured in a closure and **no cancellation token**. A newer
+user command inside that window is silently overwritten when the stale callback fires. Found by
+Astra; confirmed by reading. Fix is a transfer-generation counter, not input validation alone.
+
+### Positions changed
+
+1. **P-02 (grid fix) reclassified** XS -> M, and from "one line" to "structural node balance with
+   multi-path tests." Verified formulation recorded in `Ideas.md` §C1.
+2. **P-01 (engine promotion) is now a gate, not a schedule item.** Fix N1-N3 and extend the tests
+   to assert load power and grid power in bypass — not merely that the inverter EPS port is zero
+   — before choosing which engine owns state.
+3. **P-08 split.** Do not enable six dormant 3D APIs at once. One cabinet end-to-end first, with
+   `isolateSubsystem()` rewritten to save and restore original material state (R2 is precisely
+   why). Remaining capabilities one at a time, each with a check.
+4. **Endpoint-to-anchor binding removed from the four-day commitment.** Contract only. Binding
+   endpoints without an approved mapping risks cementing a wrong relationship. Cabling stays with
+   the owner.
+5. **Fault recovery is per-device**, from the approved equipment definition. "All faults always
+   latch" withdrawn as a general rule. For `fspd_mcb`, model the real protection relationship
+   rather than inventing a visible effect.
+6. **Adopted from Astra's 3D proposals:** "where is this fed from / why is it off" one-liner in
+   the inspector; return-to-previous-view after entering a cabinet; reference vs modelled vs
+   unknown labelling with zero never standing in for unknown; traceable build with version ID and
+   checksum; the 12-control / 80 % scene figures treated as design targets rather than quality proofs.
+
+### On the third-agent (Gemini) assessment
+
+Its "100 % confirmed / fully verified" verdict is not supported by the evidence in its own
+report: code reading and grep output, with no browser version, startup log, or fresh screenshot.
+It correctly described several real bugs, and it endorsed both my auto-router rejection (right)
+and my engine-promotion argument (now demonstrably wrong). Agreement across reports is not new
+evidence. Astra's rejection of that verdict is sound.
+
+### Standing statement
+
+**Three agents have now reviewed this application. None has run it in a browser.** All findings
+are static analysis plus Node execution of non-UI code paths.
+
+### Proposed next step
+
+Owner spends ten minutes in a real browser confirming five items (`Ideas.md` §10), including the
+new QG-open case that distinguishes the conditional bug from the one my v2 described. Then
+consolidate, mark an agreed subset `APPROVED`, and begin Day 1.
+
+**Detail:** see [Ideas.md](Ideas.md) v3.
+
+---
+
+---
+
+## 2026-09-13T13:32:00-04:00 — agent: `claude-opus-5` (Claude Code) — Implementation plan issued — `PROPOSED`
+
+**Phase:** Planning. **No application code modified.** Created `PLAN.md` only.
+
+### Purpose
+
+Owner will hand implementation to a separate, lower-cost agent, reviewing after each step. That
+agent will report to `work.md`. `PLAN.md` is written to remove judgment calls: exact file paths,
+exact patch text, exact verification commands with expected output, and explicit stop conditions.
+
+### Structure
+
+15 steps in 6 phases with 7 review gates. Steps 0-11 form the 3-4 day commitment; Phase 6
+(12-14) is interface work beyond it.
+
+| Phase | Steps | Content |
+|---|---|---|
+| 0 | 0-1 | git baseline; **browser smoke test** (first runtime evidence in this project) |
+| 1 | 2-4 | extract pure power model + golden-baseline tests; single-file build; inline font |
+| 2 | 5-6 | `_animateCamera`; SBY validation + transfer cancellation |
+| 3 | 7-8 | structural BUS-G node balance; implement `eps_rcd` |
+| 4 | 9 | click selects / explicit action operates |
+| 5 | 10-11 | safe `isolateSubsystem` rewrite; MDB cabinet inspection end-to-end |
+| 6 | 12-14 | Tools menu; telemetry strip; collapsible drawer |
+
+### Design decisions
+
+1. **Step 1 is pure evidence, no code.** Three agents have reviewed this app by reading; none has
+   run it. The step records 8 observations plus environment and 3 screenshots, and explicitly
+   instructs the agent to report contradictions with the reviewer's expectations rather than
+   conform to them.
+2. **Step 2 extracts the power math into `js/power-model.js` before anything is fixed**, so a
+   Node-testable safety net exists first. Verified against a golden baseline of the *current,
+   unfixed* behaviour (P1=2200, P2=2200, P3=5900, P4=-3500, P5=3900, P6=6900, P7=0) — proving the
+   refactor changed nothing.
+3. **Step 7 carries pre-validated patch text.** Having previously recommended an untested
+   one-line fix that would have caused a regression (correction round #3, C1), the replacement
+   was numerically validated across 7 feed paths before being written into the plan:
+   defaults, QG-open, bypass, PV-surplus export, battery discharge, night charge, grid dead.
+   **P2 (QG open, 2200 W) and P7 (grid dead, 0 W) are designated regression guards** — the plan
+   states that if either changes, the fix is wrong and the agent must stop.
+4. **Step 10 rewrites `isolateSubsystem()` before it is ever wired**, per R2: material cloning,
+   `traverse()` for descendants, and save/restore of original opacity/transparent state instead
+   of forcing `transparent = false`.
+5. **`qpv_isolator` is explicitly marked do-not-touch** (it works via the alias map), correcting
+   my own earlier error so the implementing agent does not inherit it.
+6. **`fspd_mcb` is to be labelled illustrative, not given an invented effect** — modelling it
+   needs a protection relationship only the owner can specify.
+7. **Deferred list is explicit** (§E): engine promotion, cabling, auto-routing, blanket latching,
+   new topologies, remaining 3D APIs, accessibility, and deleting `sound-fx.js` (unused but not
+   inert — it registers listeners at load).
+
+### Guardrails
+
+Named do-not-modify list (owner files, vendor libraries, the three large content DBs, planning
+docs); prohibitions on new network calls, ES modules, library upgrades, topology/protection
+changes, and speculative deletion; commit required per step; `work.md` template requiring
+verbatim command output rather than prose claims.
+
+§G instructs the agent to challenge the plan with evidence if a step looks wrong, noting that the
+plan's author has already been corrected twice in this project.
+
+### Status
+
+`PROPOSED`. No step may begin until the owner approves. Reviewer checks `work.md` at each gate.
+
+---
+<!-- Next agent: append below this line. Do not modify anything above it. -->

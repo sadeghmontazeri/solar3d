@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>شبیه‌ساز سه‌بعدی و دیاگرام تک‌خطی سامانه خورشیدی هایبرید ۵ کیلووات | IEC 60364-7-712</title>
+
+  <!-- Persian Web Font & Design System -->
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☀️</text></svg>">
+</head>
+<body>
+
+  <!-- Three.js 3D WebGL Canvas Container -->
+  <div id="canvas-container"></div>
+
+  <!-- UI Overlay System -->
+  <div class="ui-overlay">
+
+    <!-- ==================================================================== -->
+    <!-- 1. TOP HEADER BAR                                                    -->
+    <!-- ==================================================================== -->
+    <header class="top-header interactive">
+      <!-- Brand & Title -->
+      <div class="brand-section">
+        <div class="brand-icon">⚡</div>
+        <div class="brand-titles">
+          <div class="brand-title">
+            سامانه خورشیدی هایبرید ۵ کیلووات
+            <span style="font-size:0.75rem; background:rgba(245,158,11,0.2); color:#fbbf24; padding:2px 8px; border-radius:999px; border:1px solid rgba(245,158,11,0.4);">IEC 60364-7-712</span>
+          </div>
+          <div class="brand-subtitle">شبیه‌ساز پیشرفته مهندسی، دیاگرام تک‌خطی تعاملی و ارزیابی استانداردی</div>
+        </div>
+      </div>
+
+      <!-- Operating Mode Toggles -->
+      <div class="mode-switches-group">
+        <button class="mode-btn active" data-mode="normal_day">☀️ روز آفتابی</button>
+        <button class="mode-btn" data-mode="evening_peak">🌆 پیک عصر</button>
+        <button class="mode-btn eps-mode" data-mode="grid_outage">⚠️ قطع شبکه (EPS)</button>
+        <button class="mode-btn" data-mode="emergency_backup">🛡️ پشتیبان</button>
+        <button class="mode-btn" data-mode="night_charge">🌙 شارژ شبانه</button>
+      </div>
+
+      <!-- Header Action Buttons & Sound Toggle -->
+      <div class="header-actions">
+        <button id="btn-open-sld" class="btn-header-action highlight">
+          <span>📐</span> دیاگرام تک‌خطی (SLD)
+        </button>
+        <button id="btn-open-checklist" class="btn-header-action">
+          <span>📋</span> چک‌لیست ناظر
+        </button>
+        <button id="btn-open-calcs" class="btn-header-action">
+          <span>🧮</span> محاسبات فنی
+        </button>
+        <button id="btn-open-why-header" class="btn-header-action">
+          <span>💡</span> چراهای مهندسی
+        </button>
+        <button id="btn-open-troubleshooting" class="btn-header-action highlight" title="عیب‌یابی جامع خطاها">
+          <span>🛠️</span> عیب‌یابی
+        </button>
+        <button id="btn-open-fatsat" class="btn-header-action" title="آزمون‌های تحویل کارخانه‌ای و سایتی">
+          <span>🔬</span> آزمون‌های FAT/SAT
+        </button>
+        <button id="btn-open-legend" class="btn-header-action" title="راهنمای بصری وضعیت و رنگ هادی‌ها">
+          <span>🎨</span> راهنمای رنگ و وضعیت
+        </button>
+        <button id="btn-open-guide" class="btn-header-action highlight" title="راهنمای جامع طراحی و احداث سامانه خورشیدی">
+          <span>📖</span> راهنمای جامع
+        </button>
+        <button id="btn-open-exercises" class="btn-header-action" title="کارگاه آموزشی تمرین‌های مدار خورشیدی">
+          <span>📝</span> تمرین‌های مدار
+        </button>
+        <button id="btn-open-contractors" class="btn-header-action" title="بانک اطلاعاتی پیمانکاران مجاز ساتبا">
+          <span>🏢</span> پیمانکاران ساتبا
+        </button>
+        <button id="btn-open-disputes" class="btn-header-action" title="جدول رفع ابهامات و تناقضات اسناد طراحی">
+          <span>⚖️</span> رفع ابهامات طراحی
+        </button>
+        <button id="btn-toggle-sound" class="btn-icon-only active" title="صدا فعال است">
+          🔊
+        </button>
+      </div>
+    </header>
+
+    <!-- ==================================================================== -->
+    <!-- 2. FLOATING TELEMETRY HUD BAR                                        -->
+    <!-- ==================================================================== -->
+    <div class="telemetry-bar interactive">
+      <!-- 1. PV Array Badge -->
+      <div class="telemetry-badge solar">
+        <div class="badge-top">
+          <div class="badge-label">
+            <span>☀️</span> آرایه خورشیدی (PV)
+          </div>
+          <div id="hud-pv-dot" class="badge-status-dot"></div>
+        </div>
+        <div class="badge-main-val">
+          <span id="hud-pv-p" class="val">3770</span>
+          <span class="unit">وات (W)</span>
+        </div>
+        <div class="badge-sub-metrics">
+          <span class="sub-metric"><span>V:</span><span id="hud-pv-v">385 V</span></span>
+          <span class="sub-metric"><span>I:</span><span id="hud-pv-i">9.8 A</span></span>
+        </div>
+      </div>
+
+      <!-- 2. Battery Storage Badge -->
+      <div class="telemetry-badge battery">
+        <div class="badge-top">
+          <div class="badge-label">
+            <span>🔋</span> باتری LiFePO4
+          </div>
+          <div id="hud-bat-dot" class="badge-status-dot"></div>
+        </div>
+        <div class="badge-main-val">
+          <span id="hud-bat-p" class="val">+850</span>
+          <span class="unit">وات (W)</span>
+        </div>
+        <div class="badge-sub-metrics">
+          <span class="sub-metric"><span>SOC:</span><span id="hud-bat-soc">75%</span></span>
+          <span class="sub-metric"><span id="hud-bat-v">51.8 V</span></span>
+          <span class="sub-metric" id="hud-bat-state">در حال شارژ</span>
+        </div>
+      </div>
+
+      <!-- 3. Hybrid Inverter Badge -->
+      <div class="telemetry-badge inverter">
+        <div class="badge-top">
+          <div class="badge-label">
+            <span>⚡</span> اینورتر هایبرید
+          </div>
+          <div id="hud-inv-dot" class="badge-status-dot"></div>
+        </div>
+        <div class="badge-main-val">
+          <span id="hud-inv-p" class="val">3700</span>
+          <span class="unit">وات خروجی</span>
+        </div>
+        <div class="badge-sub-metrics">
+          <span class="sub-metric"><span id="hud-inv-freq">50.0 Hz</span></span>
+          <span class="sub-metric"><span>راندمان:</span><span id="hud-inv-eff">97.4%</span></span>
+          <span class="sub-metric" id="hud-inv-status">سنکرون با شبکه</span>
+        </div>
+      </div>
+
+      <!-- 4. Utility Grid Badge -->
+      <div class="telemetry-badge grid">
+        <div class="badge-top">
+          <div class="badge-label">
+            <span>🌐</span> شبکه توزیع سراسری
+          </div>
+          <div id="hud-grid-dot" class="badge-status-dot"></div>
+        </div>
+        <div class="badge-main-val">
+          <span id="hud-grid-p" class="val">-720</span>
+          <span class="unit">وات (تبادل)</span>
+        </div>
+        <div class="badge-sub-metrics">
+          <span class="sub-metric"><span>V:</span><span id="hud-grid-v">230 V</span></span>
+          <span class="sub-metric" id="hud-grid-direction">صادرات به شبکه</span>
+        </div>
+      </div>
+
+      <!-- 5. EPS Critical Loads Badge -->
+      <div class="telemetry-badge eps">
+        <div class="badge-top">
+          <div class="badge-label">
+            <span>🚨</span> بارهای بحرانی (EPS)
+          </div>
+          <div id="hud-eps-dot" class="badge-status-dot"></div>
+        </div>
+        <div class="badge-main-val">
+          <span id="hud-eps-p" class="val">1500</span>
+          <span class="unit">وات (W)</span>
+        </div>
+        <div class="badge-sub-metrics">
+          <span class="sub-metric"><span>V:</span><span id="hud-eps-v">230 V</span></span>
+          <span class="sub-metric" id="hud-eps-status">پایدار (تغذیه فعال)</span>
+        </div>
+      </div>
+
+      <!-- 6. Normal AC Loads Badge -->
+      <div class="telemetry-badge load">
+        <div class="badge-top">
+          <div class="badge-label">
+            <span>💡</span> بارهای عادی ساختمان
+          </div>
+        </div>
+        <div class="badge-main-val">
+          <span id="hud-load-p" class="val">2200</span>
+          <span class="unit">وات (W)</span>
+        </div>
+        <div class="badge-sub-metrics">
+          <span class="sub-metric" id="hud-load-status">برق‌دار (عادی)</span>
+        </div>
+      </div>
+
+      <!-- 7. SBY Changeover Switch Badge -->
+      <div class="telemetry-badge sby" id="hud-sby-badge" style="cursor: pointer;" title="کلیک جهت چرخاندن و تغییر منبع کلید بای‌پس SBY">
+        <div class="badge-top">
+          <div class="badge-label">
+            <span>🔀</span> کلید تبدیل SBY
+          </div>
+          <div id="hud-sby-dot" class="badge-status-dot active"></div>
+        </div>
+        <div class="badge-main-val">
+          <span id="hud-sby-pos" class="val" style="color:var(--eps-magenta)">I (اینورتر)</span>
+        </div>
+        <div class="badge-sub-metrics">
+          <span class="sub-metric" id="hud-sby-desc">خروجی اینورتر EPS</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scenario / Tutorial Toast Banner -->
+    <div id="scenario-banner" class="scenario-banner interactive hidden">
+      <span class="scenario-icon">ℹ️</span>
+      <span id="scenario-text" class="scenario-text">حالت روز آفتابی فعال است.</span>
+      <button class="scenario-close" onclick="document.getElementById('scenario-banner').classList.add('hidden')">×</button>
+    </div>
+
+    <!-- 3D Viewport Quick Action Toolbar for Instant AC Panel Zoom & Door Control -->
+    <div class="viewport-quick-bar interactive">
+      <button id="quick-btn-dc-box" class="quick-bar-btn" title="زوم مستقیم به داخل کمباینر باکس DC">⚡ کمباینر باکس DC</button>
+      <button id="quick-btn-dc-door" class="quick-bar-btn door-btn" title="باز و بسته کردن درب کمباینر DC">🚪 درب کمباینر DC</button>
+      <button id="quick-btn-mdb" class="quick-bar-btn" title="زوم مستقیم به داخل تابلوی اصلی MDB">🔍 زوم داخل تابلو MDB</button>
+      <button id="quick-btn-wiring" class="quick-bar-btn" title="مشاهده داکت‌ها و سیم‌کشی">⚡ سیم‌کشی و شینه‌ها</button>
+      <button id="quick-btn-terminals" class="quick-bar-btn" title="زوم ماکرو روی ترمینال‌ها و کنتور">🔬 ترمینال‌ها و کنتور</button>
+      <button id="quick-btn-eps" class="quick-bar-btn" title="زوم مستقیم به داخل تابلوی اضطراری EPS">🛡️ تابلو اضطراری EPS</button>
+      <button id="quick-btn-door" class="quick-bar-btn door-btn" title="باز و بسته کردن درب‌های تابلو">🚪 باز کردن درب تابلو</button>
+      <button id="quick-btn-overview" class="quick-bar-btn" title="بازگشت به نمای کلی">🌐 نمای کلی</button>
+    </div>
+
+    <!-- ==================================================================== -->
+    <!-- 3. LEFT PANEL: VIEWPOINTS, FAILURES & COCKPIT CONTROLS               -->
+    <!-- ==================================================================== -->
+    <aside class="left-cockpit-panel interactive">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span>🎛️</span> پنل فرمان و کنترل مهندسی
+        </div>
+      </div>
+
+      <div class="panel-content-scroll">
+        <!-- Section 1: Camera Viewpoints -->
+        <div class="cockpit-section">
+          <div class="section-label">زاویه دید سه‌بعدی دوربین</div>
+          <div class="viewpoints-grid">
+            <button class="btn-viewpoint active" data-viewpoint="overview">🔍 نمای کلی</button>
+            <button class="btn-viewpoint" data-viewpoint="pv">☀️ آرایه خورشیدی</button>
+            <button class="btn-viewpoint" data-viewpoint="dc_box" style="background: rgba(245,158,11,0.15); border-color: rgba(245,158,11,0.4); color: #fbbf24;">⚡ کمباینر باکس DC</button>
+            <button class="btn-viewpoint" data-viewpoint="inverter">⚡ اینورتر هایبرید</button>
+            <button class="btn-viewpoint" data-viewpoint="battery">🔋 بانک باتری</button>
+            <button class="btn-viewpoint" data-viewpoint="main_board">🏢 تابلو اصلی MDB</button>
+            <button class="btn-viewpoint" data-viewpoint="eps_board">🚨 بارهای بحرانی</button>
+            <button class="btn-viewpoint" data-viewpoint="ac_interior" style="grid-column: span 2; background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.4); color: #60a5fa;">🔍 زوم داخل تابلو MDB</button>
+            <button class="btn-viewpoint" data-viewpoint="ac_wiring" style="grid-column: span 2; background: rgba(245,158,11,0.15); border-color: rgba(245,158,11,0.4); color: #fbbf24;">⚡ بازرسی سیم‌کشی و شینه‌ها</button>
+            <button class="btn-viewpoint" data-viewpoint="ac_terminals" style="grid-column: span 2; background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.4); color: #34d399;">🔬 زوم ترمینال‌ها و کنتور هوشمند</button>
+            <button class="btn-viewpoint" data-viewpoint="eps_interior" style="grid-column: span 2; background: rgba(139,92,246,0.15); border-color: rgba(139,92,246,0.4); color: #a78bfa;">🛡️ زوم داخل تابلو EPS</button>
+            <button id="btn-camera-front" class="btn-viewpoint" style="background: rgba(14,165,233,0.15); border-color: rgba(14,165,233,0.4); color: #38bdf8;">🎯 نمای روبرو</button>
+            <button id="btn-camera-reset" class="btn-viewpoint" style="background: rgba(100,116,139,0.15); border-color: rgba(100,116,139,0.4); color: #94a3b8;">🔄 بازنشانی زاویه دید</button>
+            <button id="btn-toggle-enclosure-shell" class="btn-viewpoint" style="grid-column: span 2; background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.4); color: #34d399;">🏢 نمایش/مخفی‌سازی پوسته تابلوها</button>
+            <button id="btn-toggle-dc-door" class="btn-viewpoint" style="grid-column: span 1; background: rgba(245,158,11,0.15); border-color: rgba(245,158,11,0.4); color: #fbbf24;">🚪 درب کمباینر DC</button>
+            <button id="btn-toggle-mdb-door" class="btn-viewpoint" style="grid-column: span 1; background: rgba(234,88,12,0.15); border-color: rgba(234,88,12,0.4); color: #fb923c;">🚪 درب تابلو MDB</button>
+            <button id="btn-toggle-eps-door" class="btn-viewpoint" style="grid-column: span 1; background: rgba(168,85,247,0.15); border-color: rgba(168,85,247,0.4); color: #c084fc;">🚪 درب تابلو EPS</button>
+          </div>
+        </div>
+
+        <!-- Section 2: 9 Failure Simulator Controls -->
+        <div class="cockpit-section">
+          <div class="section-label">شبیه‌ساز ۹ خطای استاندارد IEC</div>
+          <div class="failures-list">
+            <!-- Fault 1: DC Arc Fault -->
+            <label class="failure-item">
+              <div class="failure-info">
+                <span class="failure-name">خطای قوس الکتریکی DC (AFCI)</span>
+                <span class="failure-desc">تریپ فوق‌سریع قطع استرینگ</span>
+              </div>
+              <div class="toggle-switch">
+                <input type="checkbox" class="failure-toggle-input" data-failure="dc_arc_fault">
+                <span class="toggle-slider"></span>
+              </div>
+            </label>
+
+            <!-- Fault 2: Surge Overvoltage -->
+            <label class="failure-item">
+              <div class="failure-info">
+                <span class="failure-name">صاعقه و اضافه ولتاژ گذرا</span>
+                <span class="failure-desc">تخلیه ارستر DC SPD Type II</span>
+              </div>
+              <div class="toggle-switch">
+                <input type="checkbox" class="failure-toggle-input" data-failure="surge_overvoltage">
+                <span class="toggle-slider"></span>
+              </div>
+            </label>
+
+            <!-- Fault 3: Grid Blackout -->
+            <label class="failure-item">
+              <div class="failure-info">
+                <span class="failure-name">قطعی کامل شبکه توزیع شهری</span>
+                <span class="failure-desc">سوئیچ آنتی‌آیلندینگ به EPS &lt;20ms</span>
+              </div>
+              <div class="toggle-switch">
+                <input type="checkbox" class="failure-toggle-input" data-failure="grid_blackout">
+                <span class="toggle-slider"></span>
+              </div>
+            </label>
+
+            <!-- Fault 4: Grid Brownout -->
+            <label class="failure-item">
+              <div class="failure-info">
+                <span class="failure-name">افت شدید ولتاژ شبکه (Brownout)</span>
+                <span class="failure-desc">افت ولتاژ ورودی به 165V</span>
+              </div>
+              <div class="toggle-switch">
+                <input type="checkbox" class="failure-toggle-input" data-failure="grid_brownout">
+                <span class="toggle-slider"></span>
+              </div>
+            </label>
+
+            <!-- Fault 5: Ground Fault -->
+            <label class="failure-item">
+              <div class="failure-info">
+                <span class="failure-name">خطای نشتی زمین (RCD Trip)</span>
+                <span class="failure-desc">قطع کلید محافظ جان 30mA</span>
+              </div>
+              <div class="toggle-switch">
+                <input type="checkbox" class="failure-toggle-input" data-failure="ground_fault">
+                <span class="toggle-slider"></span>
+              </div>
+            </label>
+
+            <!-- Fault 6: Battery Thermal Runaway -->
+            <label class="failure-item">
+              <div class="failure-info">
+                <span class="failure-name">داغ شدن باتری / خطای BMS</span>
+                <span class="failure-desc">ایزولاسیون کلید دوپل 125A</span>
+              </div>
+              <div class="toggle-switch">
+                <input type="checkbox" class="failure-toggle-input" data-failure="battery_thermal">
+                <span class="toggle-slider"></span>
+              </div>
+            </label>
+
+            <!-- Fault 7: EPS Overload -->
+            <label class="failure-item">
+              <div class="failure-info">
+                <span class="failure-name">اضافه بار خط بحرانی (&gt;5kW)</span>
+                <span class="failure-desc">تریپ کلید حفاظتی EPS MCB 25A</span>
+              </div>
+              <div class="toggle-switch">
+                <input type="checkbox" class="failure-toggle-input" data-failure="eps_overload">
+                <span class="toggle-slider"></span>
+              </div>
+            </label>
+
+            <!-- Fault 8: Blown PV Fuse -->
+            <label class="failure-item">
+              <div class="failure-info">
+                <span class="failure-name">سوختن فیوز استرینگ gPV</span>
+                <span class="failure-desc">قطع مسیر جریان یک استرینگ</span>
+              </div>
+              <div class="toggle-switch">
+                <input type="checkbox" class="failure-toggle-input" data-failure="blown_pv_fuse">
+                <span class="toggle-slider"></span>
+              </div>
+            </label>
+
+            <!-- Fault 9: CT Inverted -->
+            <label class="failure-item">
+              <div class="failure-info">
+                <span class="failure-name">نصب معکوس ترانس جریان (CT)</span>
+                <span class="failure-desc">خطای منطقی تزریق به شبکه</span>
+              </div>
+              <div class="toggle-switch">
+                <input type="checkbox" class="failure-toggle-input" data-failure="ct_inverted">
+                <span class="toggle-slider"></span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Section: SBY 3-Position Changeover Switch Controller -->
+        <div class="cockpit-section">
+          <div class="section-label">
+            <span>کلید تبدیل ۳ حالته دستی SBY (بای‌پاس)</span>
+            <span id="sby-status-tag" style="color:var(--eps-magenta); font-weight:bold; font-size:0.75rem;">وضعیت: I (EPS)</span>
+          </div>
+          <div class="sby-control-group">
+            <button id="btn-sby-pos-1" class="sby-pos-btn active" data-pos="I">
+              حالت I<br><span style="font-size:0.68rem; font-weight:normal;">اینورتر EPS</span>
+            </button>
+            <button id="btn-sby-pos-0" class="sby-pos-btn" data-pos="0">
+              حالت 0<br><span style="font-size:0.68rem; font-weight:normal;">قطع کامل</span>
+            </button>
+            <button id="btn-sby-pos-2" class="sby-pos-btn" data-pos="II">
+              حالت II<br><span style="font-size:0.68rem; font-weight:normal;">بای‌پاس شبکه</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Section 3: Environmental & Load Sliders -->
+        <div class="cockpit-section">
+          <div class="section-label">
+            <span>تنظیمات محیطی و توان بار</span>
+            <button id="btn-reset-cockpit" style="background:none; border:none; color:var(--solar-amber); font-size:0.75rem; cursor:pointer;">بازنشانی</button>
+          </div>
+
+          <div class="sliders-group">
+            <!-- Slider 1: Irradiance -->
+            <div class="slider-card">
+              <div class="slider-top">
+                <span class="slider-label">شدت تابش خورشید (G)</span>
+                <span id="val-irradiance" class="slider-value">850 W/m²</span>
+              </div>
+              <input type="range" id="slider-irradiance" min="0" max="1200" step="10" value="850">
+            </div>
+
+            <!-- Slider 2: Ambient Temp -->
+            <div class="slider-card">
+              <div class="slider-top">
+                <span class="slider-label">دمای محیطی (T)</span>
+                <span id="val-temp" class="slider-value">25 °C</span>
+              </div>
+              <input type="range" id="slider-temp" min="-20" max="50" step="1" value="25">
+            </div>
+
+            <!-- Slider 3: Normal Loads -->
+            <div class="slider-card">
+              <div class="slider-top">
+                <span class="slider-label">توان بارهای عادی ساختمان</span>
+                <span id="val-normal-load" class="slider-value">2200 W</span>
+              </div>
+              <input type="range" id="slider-normal-load" min="0" max="6000" step="50" value="2200">
+            </div>
+
+            <!-- Slider 4: Critical EPS Loads -->
+            <div class="slider-card">
+              <div class="slider-top">
+                <span class="slider-label">توان بارهای بحرانی (EPS)</span>
+                <span id="val-critical-load" class="slider-value">1500 W</span>
+              </div>
+              <input type="range" id="slider-critical-load" min="0" max="5000" step="50" value="1500">
+            </div>
+
+            <!-- Slider 5: Battery SOC -->
+            <div class="slider-card">
+              <div class="slider-top">
+                <span class="slider-label">درصد شارژ باتری (SOC)</span>
+                <span id="val-soc" class="slider-value">75%</span>
+              </div>
+              <input type="range" id="slider-soc" min="10" max="100" step="1" value="75">
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- ==================================================================== -->
+    <!-- 4. BOTTOM FILTER BAR: 8 FLOW ISOLATION FILTERS                      -->
+    <!-- ==================================================================== -->
+    <nav class="bottom-filter-bar interactive">
+      <button class="flow-filter-btn active" data-filter="all">
+        <span class="filter-dot all"></span> همه جریان‌ها
+      </button>
+      <button class="flow-filter-btn" data-filter="pv">
+        <span class="filter-dot pv"></span> جریان DC خورشیدی
+      </button>
+      <button class="flow-filter-btn" data-filter="bat">
+        <span class="filter-dot bat"></span> جریان باتری
+      </button>
+      <button class="flow-filter-btn" data-filter="inv">
+        <span class="filter-dot inv"></span> اینورتر به تابلو
+      </button>
+      <button class="flow-filter-btn" data-filter="grid">
+        <span class="filter-dot grid"></span> تبادل با شبکه
+      </button>
+      <button class="flow-filter-btn" data-filter="loads">
+        <span class="filter-dot loads"></span> بارهای عادی
+      </button>
+      <button class="flow-filter-btn" data-filter="eps">
+        <span class="filter-dot eps"></span> بارهای بحرانی EPS
+      </button>
+      <button class="flow-filter-btn" data-filter="earth">
+        <span class="filter-dot earth"></span> هادی حفاظتی PE
+      </button>
+    </nav>
+
+    <!-- ==================================================================== -->
+    <!-- 5. RIGHT SLIDE-OUT INSPECTOR DRAWER (12 Engineering Fields)          -->
+    <!-- ==================================================================== -->
+    <aside id="inspector-drawer" class="inspector-drawer interactive">
+      <div class="drawer-header">
+        <div class="drawer-title-group">
+          <span id="drawer-comp-category" class="drawer-badge">هسته تبدیل انرژی</span>
+          <h2 id="drawer-comp-name" class="drawer-title">اینورتر هایبرید ۵ کیلووات</h2>
+        </div>
+        <div class="drawer-header-actions">
+          <button id="btn-close-drawer" class="btn-drawer-close" title="بستن">✕</button>
+        </div>
+      </div>
+
+      <div class="drawer-action-bar">
+        <button id="btn-copy-drawer" class="btn-drawer-action">
+          <span>📋</span> کپی مشخصات
+        </button>
+        <button id="btn-why-drawer" class="btn-drawer-action why-btn">
+          <span>💡</span> چراهای مهندسی؟
+        </button>
+      </div>
+
+      <!-- 12-Field Accordion List -->
+      <div id="drawer-accordion-container" class="drawer-accordion">
+        <!-- Injected via app.js -->
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- MODAL 1: INTERACTIVE SINGLE LINE DIAGRAM (SLD) MODAL                   -->
+  <!-- ====================================================================== -->
+  <div id="sld-modal" class="modal-backdrop">
+    <div class="modal-window sld-modal">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-title-icon">📐</div>
+          <div class="modal-title">دیاگرام تک‌خطی تعاملی مدار الکتریکی (IEC 60364-7-712 Single Line Diagram)</div>
+        </div>
+        <button id="btn-close-sld" class="modal-close">✕</button>
+      </div>
+
+      <!-- 6-Tab Navigation Bar for Base Schematics per HYB-FA-001 Rev B -->
+      <div class="sld-tabs-bar" id="sld-tabs-bar">
+        <button class="sld-tab-btn active" data-tab="SLD-01">SLD-01 تک‌فاز ۵kW</button>
+        <button class="sld-tab-btn" data-tab="SLD-02">SLD-02 سه‌فاز واقعی ۱۵kW</button>
+        <button class="sld-tab-btn" data-tab="SLD-03">SLD-03 انتقال خودکار ATSE</button>
+        <button class="sld-tab-btn" data-tab="DC-01-02">DC-01/02 خورشیدی و پیش‌شارژ</button>
+        <button class="sld-tab-btn" data-tab="E-01">E-01 زمین و نول KNE/KSEP</button>
+        <button class="sld-tab-btn" data-tab="C-01">C-01 مدار فرمان لدر و FSM</button>
+      </div>
+
+      <div class="sld-toolbar">
+        <div class="sld-tools-group">
+          <button id="btn-sld-zoom-in" class="sld-tool-btn">🔍+ بزرگ‌نمایی</button>
+          <button id="btn-sld-zoom-out" class="sld-tool-btn">🔍- کوچک‌نمایی</button>
+          <button id="btn-sld-zoom-reset" class="sld-tool-btn">🔄 ریست نما</button>
+        </div>
+        <div style="font-size:0.75rem; color:#94a3b8;">
+          💡 نکته: روی کلیدهای ایزولاتور یا کلیدهای مینیاتوری کلیک کنید تا مدار قطع یا وصل شود.
+        </div>
+      </div>
+
+      <div id="sld-container" class="sld-container">
+        <!-- SVG Injected dynamically by sld-schematic.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- MODAL 2: ENGINEERING "WHY?" POPUP MODAL                                -->
+  <!-- ====================================================================== -->
+  <div id="why-modal" class="modal-backdrop">
+    <div class="modal-window why-modal">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-title-icon">💡</div>
+          <div class="modal-title">چراهای مهندسی: مبانی فیزیکی، استانداردهای IEC و عواقب طراحی</div>
+        </div>
+        <button id="btn-close-why" class="modal-close">✕</button>
+      </div>
+
+      <!-- Tabs Bar -->
+      <div id="why-tabs-bar" class="why-tabs-bar">
+        <!-- Injected dynamically -->
+      </div>
+
+      <div class="modal-body">
+        <div id="why-content-body" class="why-content-body">
+          <!-- Injected dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- MODAL 3: SUPERVISOR CHECKLIST & ACCEPTANCE TESTS MODAL                -->
+  <!-- ====================================================================== -->
+  <div id="checklist-modal" class="modal-backdrop">
+    <div class="modal-window checklist-modal">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-title-icon">📋</div>
+          <div class="modal-title">چک‌لیست نظارتی ناظر سازمان نظام مهندسی و تست‌های تحویل موقت</div>
+        </div>
+        <button id="btn-close-checklist" class="modal-close">✕</button>
+      </div>
+
+      <!-- Live Progress Bar -->
+      <div class="checklist-progress-container">
+        <div class="progress-info">
+          <span class="progress-label">پیشرفت بازرسی و تست‌های میدانی</span>
+          <span id="checklist-stats-text" class="progress-stats">۰ از ۲۵ مورد تأیید شد (۰%)</span>
+        </div>
+        <div class="progress-bar-wrapper">
+          <div id="checklist-progress-fill" class="progress-bar-fill"></div>
+        </div>
+      </div>
+
+      <!-- Category Tabs -->
+      <div id="checklist-tabs-nav" class="checklist-tabs-nav">
+        <!-- Injected dynamically -->
+      </div>
+
+      <div class="modal-body">
+        <div id="checklist-items-container" class="checklist-items-list">
+          <!-- Injected dynamically -->
+        </div>
+      </div>
+
+      <div class="checklist-footer-bar">
+        <span style="font-size:0.75rem; color:#94a3b8;">آیین‌نامه اجرایی مبحث ۱۳ مقررات ملی ساختمان و استانداردهای IEC 62446</span>
+        <button id="btn-export-report" class="btn-header-action highlight">
+          <span>🖨️</span> صدور و چاپ فرم تاییدیه نهایی
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- MODAL 4: ENGINEERING CALCULATORS MODAL (5 TABS)                       -->
+  <!-- ====================================================================== -->
+  <div id="calc-modal" class="modal-backdrop">
+    <div class="modal-window calc-modal">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-title-icon">🧮</div>
+          <div class="modal-title">جعبه ابزار محاسبات مهندسی سیستم‌های فتوولتائیک و هایبرید</div>
+        </div>
+        <button id="btn-close-calcs" class="modal-close">✕</button>
+      </div>
+
+      <!-- 5 Calculator Tabs -->
+      <div class="calc-tabs-bar">
+        <button class="calc-tab-btn active" data-calc-pane="pane-cable">۱. کابل و افت ولتاژ</button>
+        <button class="calc-tab-btn" data-calc-pane="pane-mppt">۲. تطبیق استرینگ و MPPT</button>
+        <button class="calc-tab-btn" data-calc-pane="pane-battery">۳. باتری و ساعت خودمختاری</button>
+        <button class="calc-tab-btn" data-calc-pane="pane-protection">۴. سایز فیوز و سرج ارستر</button>
+        <button class="calc-tab-btn" data-calc-pane="pane-inverter">۵. نسبت بارگذاری اینورتر</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Tab 1: Cable Sizing -->
+        <div id="pane-cable" class="calc-pane active">
+          <div class="calc-formula-box">
+            فرمول استاندارد IEC 60364-5-52: ΔV = (2 × L × I) / (κ × S) &nbsp;|&nbsp; مس: κ = 56 m/(Ω·mm²)
+          </div>
+          <div class="calc-grid">
+            <div class="calc-inputs-card">
+              <h4 style="color:#38bdf8;">ورودی‌های محاسبه</h4>
+              <div class="calc-field-group">
+                <label class="calc-field-label">طول کابل یک‌طرفه (L به متر):</label>
+                <input type="number" id="calc-cable-l" class="calc-input" value="25">
+              </div>
+              <div class="calc-field-group">
+                <label class="calc-field-label">جریان عبوری (I به آمپر):</label>
+                <input type="number" id="calc-cable-i" class="calc-input" value="11.5" step="0.1">
+              </div>
+              <div class="calc-field-group">
+                <label class="calc-field-label">سطح مقطع هادی مس (S به میلی‌مترمربع):</label>
+                <input type="number" id="calc-cable-s" class="calc-input" value="6.0" step="0.5">
+              </div>
+              <div class="calc-field-group">
+                <label class="calc-field-label">ولتاژ اسمی خط (V به ولت):</label>
+                <input type="number" id="calc-cable-v" class="calc-input" value="385">
+              </div>
+            </div>
+
+            <div class="calc-results-card">
+              <h4 style="color:#38bdf8;">نتایج مهندسی افت ولتاژ</h4>
+              <div class="calc-result-row">
+                <span class="calc-result-label">مقدار افت ولتاژ ولتی (ΔV):</span>
+                <span id="res-cable-volt" class="calc-result-val">1.71 V</span>
+              </div>
+              <div class="calc-result-row">
+                <span class="calc-result-label">درصد افت ولتاژ (ΔV%):</span>
+                <span id="res-cable-percent" class="calc-result-val">0.44%</span>
+              </div>
+              <div class="calc-result-row">
+                <span class="calc-result-label">ارزیابی بر اساس IEC 60364-7-712:</span>
+                <span id="res-cable-status" class="calc-result-val pass">استاندارد و مجاز (کمتر از ۱.۵٪ سمت DC)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: String & MPPT Sizing -->
+        <div id="pane-mppt" class="calc-pane">
+          <div class="calc-formula-box">
+            Voc_max(-10°C) = Voc_stc × [1 + β_Voc × (T_min - 25)] × Ns ≤ 550V &nbsp;|&nbsp; Vmp_min(+70°C) ≥ 125V
+          </div>
+          <div class="calc-grid">
+            <div class="calc-inputs-card">
+              <h4 style="color:#38bdf8;">مشخصات پنل و استرینگ</h4>
+              <div class="calc-field-group">
+                <label class="calc-field-label">ولتاژ مدار باز پنل در STC (Voc به ولت):</label>
+                <input type="number" id="calc-mppt-voc" class="calc-input" value="49.5" step="0.1">
+              </div>
+              <div class="calc-field-group">
+                <label class="calc-field-label">ولتاژ نقطه توان ماکزیمم (Vmp به ولت):</label>
+                <input type="number" id="calc-mppt-vmp" class="calc-input" value="41.2" step="0.1">
+              </div>
+              <div class="calc-field-group">
+                <label class="calc-field-label">تعداد پنل‌های سری در استرینگ (Ns):</label>
+                <input type="number" id="calc-mppt-ns" class="calc-input" value="8">
+              </div>
+              <div class="calc-field-group">
+                <label class="calc-field-label">حداقل دمای رکورد زمستان (Tmin به °C):</label>
+                <input type="number" id="calc-mppt-tmin" class="calc-input" value="-10">
+              </div>
+              <div class="calc-field-group">
+                <label class="calc-field-label">حداکثر دمای کار سلول در تابستان (Tmax به °C):</label>
+                <input type="number" id="calc-mppt-tmax" class="calc-input" value="70">
+              </div>
+            </div>
+
+            <div class="calc-results-card">
+              <h4 style="color:#38bdf8;">نتایج انطباق با پنجره MPPT</h4>
+              <div class="calc-result-row">
+                <span class="calc-result-label">بیشینه ولتاژ مدار باز در سردترین روز:</span>
+                <span id="res-mppt-voc-max" class="calc-result-val">434.8 V</span>
+              </div>
+              <div class="calc-result-row">
+                <span class="calc-result-label">کمینه ولتاژ Vmp در گرم‌ترین روز:</span>
+                <span id="res-mppt-vmp-min" class="calc-result-val">288.1 V</span>
+              </div>
+              <div class="calc-result-row">
+                <span class="calc-result-label">وضعیت ایمنی اینورتر (125V - 550V):</span>
+                <span id="res-mppt-status" class="calc-result-val pass">تطابق کامل با پنجره MPPT اینورتر ✓</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Battery & Autonomy -->
+        <div id="pane-battery" class="calc-pane">
+          <div class="calc-formula-box">
+            E_usable = (Capacity_Ah × V_nominal × DOD × η_inv) / 1000 &nbsp;|&nbsp; t_hours = (E_usable × 1000) / P_load
+          </div>
+          <div class="calc-grid">
+            <div class="calc-inputs-card">
+              <h4 style="color:#38bdf8;">پارامترهای باتری و مصرف‌کننده</h4>
+              <div class="calc-field-group">
+                <label class="calc-field-label">توان بارهای بحرانی اضطراری (Pload به وات):</label>
+                <input type="number" id="calc-bat-load" class="calc-input" value="1500" step="50">
+              </div>
+              <div class="calc-field-group">
+                <label class="calc-field-label">ظرفیت آمپرساعت باتری (Ah):</label>
+                <input type="number" id="calc-bat-ah" class="calc-input" value="100">
+              </div>
+              <div class="calc-field-group">
+                <label class="calc-field-label">ولتاژ نامی پک باتری (ولت):</label>
+                <input type="number" id="calc-bat-vnom" class="calc-input" value="51.2" step="0.1">
+              </div>
+              <div class="calc-field-group">
+                <label class="calc-field-label">عمق دشارژ مجاز باتری لیتیومی (DOD %):</label>
+                <input type="number" id="calc-bat-dod" class="calc-input" value="80">
+              </div>
+            </div>
+
+            <div class="calc-results-card">
+              <h4 style="color:#38bdf8;">نتایج خودمختاری و زمان پشتیبانی</h4>
+              <div class="calc-result-row">
+                <span class="calc-result-label">کل انرژی نامی بانک باتری:</span>
+                <span id="res-bat-total-energy" class="calc-result-val">5.12 kWh</span>
+              </div>
+              <div class="calc-result-row">
+                <span class="calc-result-label">انرژی مفید قابل بهره‌برداری:</span>
+                <span id="res-bat-usable-energy" class="calc-result-val">3.89 kWh</span>
+              </div>
+              <div class="calc-result-row">
+                <span class="calc-result-label">مدت زمان استمرار برق‌رسانی:</span>
+                <span id="res-bat-autonomy-hours" class="calc-result-val pass">2.59 ساعت</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 4: Protection Sizing -->
+        <div id="pane-protection" class="calc-pane">
+          <div class="calc-formula-box">
+            In_fuse ≥ 1.25 × Isc &nbsp;|&nbsp; Ucpv ≥ 1.2 × Voc_max &nbsp;|&nbsp; IEC 60269-6 & IEC 61643-31
+          </div>
+          <div class="calc-grid">
+            <div class="calc-inputs-card">
+              <h4 style="color:#38bdf8;">ورودی‌های اتصال کوتاه</h4>
+              <div class="calc-field-group">
+                <label class="calc-field-label">جریان اتصال کوتاه پنل (Isc به آمپر):</label>
+                <input type="number" id="calc-prot-isc" class="calc-input" value="11.8" step="0.1">
+              </div>
+              <div class="calc-field-group">
+                <label class="calc-field-label">حداکثر ولتاژ مدار باز استرینگ (Voc_max به ولت):</label>
+                <input type="number" id="calc-prot-voc" class="calc-input" value="440">
+              </div>
+            </div>
+
+            <div class="calc-results-card">
+              <h4 style="color:#38bdf8;">سایز بهینه تجهیزات حفاظتی</h4>
+              <div class="calc-result-row">
+                <span class="calc-result-label">فیوز استرینگ پیشنهادی (gPV):</span>
+                <span id="res-prot-fuse" class="calc-result-val">15A gPV 1000Vdc</span>
+              </div>
+              <div class="calc-result-row">
+                <span class="calc-result-label">مشخصات ارستر DC SPD Type II:</span>
+                <span id="res-prot-spd" class="calc-result-val">Type II (Uc ≥ 528V DC, In ≥ 20kA)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 5: Inverter Loading -->
+        <div id="pane-inverter" class="calc-pane">
+          <div class="calc-formula-box">
+            DC/AC Ratio = P_pv_peak / P_inverter_rated &nbsp;|&nbsp; محدوده بهینه فنی: 1.10 الی 1.30
+          </div>
+          <div class="calc-grid">
+            <div class="calc-inputs-card">
+              <h4 style="color:#38bdf8;">ظرفیت‌های نامی سیستم</h4>
+              <div class="calc-field-group">
+                <label class="calc-field-label">مجموع توان پیک پنل‌ها (Pdc به وات):</label>
+                <input type="number" id="calc-inv-pvpeak" class="calc-input" value="5600" step="100">
+              </div>
+              <div class="calc-field-group">
+                <label class="calc-field-label">توان پیوسته نامی اینورتر (Pac به وات):</label>
+                <input type="number" id="calc-inv-rating" class="calc-input" value="5000" step="500">
+              </div>
+            </div>
+
+            <div class="calc-results-card">
+              <h4 style="color:#38bdf8;">ارزیابی نسبت بارگذاری</h4>
+              <div class="calc-result-row">
+                <span class="calc-result-label">نسبت بارگذاری DC به AC:</span>
+                <span id="res-inv-ratio" class="calc-result-val">1.12</span>
+              </div>
+              <div class="calc-result-row">
+                <span class="calc-result-label">تفسیر طراحی مهندسی:</span>
+                <span id="res-inv-status" class="calc-result-val pass">نسبت بهینه و دارای بیشترین بازده اقتصادی (1.10 - 1.35)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- 7. OPERATIONAL TROUBLESHOOTING MATRIX MODAL (SECTION 21)             -->
+  <!-- ==================================================================== -->
+  <div id="modal-troubleshoot" class="modal-backdrop">
+    <div class="modal-window troubleshoot-modal">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-title-icon">🛠️</div>
+          <div>
+            <h3 class="modal-title">ماتریس عیب‌یابی و رفع خطاهای سامانه خورشیدی</h3>
+            <span style="font-size:0.75rem; color:var(--text-secondary);">راهنمای عملیاتی رفع ۲۰ خطای واقعی سیستم</span>
+          </div>
+        </div>
+        <button class="modal-close" data-close="modal-troubleshoot">×</button>
+      </div>
+
+      <div class="troubleshoot-search-bar">
+        <span>🔍</span>
+        <input type="text" id="troubleshoot-search-input" class="troubleshoot-search-input" placeholder="جستجوی علامت خطا، کلمه کلیدی (مثلاً RCD، باتری، عایقی، CT، پیش‌شارژ، ارستر)...">
+      </div>
+
+      <div id="troubleshoot-cards-container" class="troubleshoot-grid">
+        <!-- Injected dynamically by app.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- 8. 22-POINT FAT/SAT COMMISSIONING TESTS MODAL (SECTION 19)           -->
+  <!-- ==================================================================== -->
+  <div id="modal-fatsat" class="modal-backdrop">
+    <div class="modal-window fatsat-modal">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-title-icon">🔬</div>
+          <div>
+            <h3 class="modal-title">برنامه آزمون‌های تحویل کارخانه‌ای و سایتی (FAT / SAT)</h3>
+            <span style="font-size:0.75rem; color:var(--text-secondary);">۲۲ آزمون اعتبارسنجی جامع عملکرد و ایمنی طبق استاندارد IEC 62446-1</span>
+          </div>
+        </div>
+        <button class="modal-close" data-close="modal-fatsat">×</button>
+      </div>
+
+      <div class="fatsat-table-wrapper">
+        <table class="fatsat-table">
+          <thead>
+            <tr>
+              <th style="width:45px">#</th>
+              <th style="width:200px">عنوان آزمون و مرجع استاندارد</th>
+              <th>چه مواردی باید ثبت شود؟</th>
+              <th>معیار پذیرش و حدود مجاز</th>
+              <th style="width:65px; text-align:center">وضعیت</th>
+            </tr>
+          </thead>
+          <tbody id="fatsat-tbody">
+            <!-- Injected dynamically by app.js -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Visual State Legend Modal (IEC 60445 / 60364) -->
+  <div id="legend-modal" class="modal-backdrop">
+    <div class="modal-window legend-modal" style="max-width: 650px;">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-title-icon">🎨</div>
+          <div class="modal-title">راهنمای بصری وضعیت، رنگ‌بندی و حالات الکتریکی هادی‌ها (IEC 60445 / 60364)</div>
+        </div>
+        <button id="btn-close-legend" class="modal-close">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 16px; color: #f1f5f9; font-size: 13px; line-height: 1.8;">
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div style="background: rgba(15,23,42,0.8); border: 1px solid rgba(56,189,248,0.3); border-radius: 8px; padding: 12px; display: flex; align-items: center; gap: 14px;">
+            <div style="width: 24px; height: 24px; border-radius: 50%; background: #38bdf8; box-shadow: 0 0 10px #38bdf8; flex-shrink: 0;"></div>
+            <div>
+              <strong style="color: #38bdf8; font-size: 14px;">۱. برق‌دار همراه با شارش توان (Energized & Power Flowing)</strong>
+              <div style="color: #94a3b8; font-size: 12px;">هادی حامل ولتاژ نامی و جریان است. ذرات نورانی متحرک با سرعت متناسب با توان در طول مسیر حرکت می‌کنند.</div>
+            </div>
+          </div>
+          <div style="background: rgba(15,23,42,0.8); border: 1px solid rgba(245,158,11,0.3); border-radius: 8px; padding: 12px; display: flex; align-items: center; gap: 14px;">
+            <div style="width: 24px; height: 24px; border-radius: 50%; background: #f59e0b; border: 2px solid #fbbf24; flex-shrink: 0;"></div>
+            <div>
+              <strong style="color: #fbbf24; font-size: 14px;">۲. برق‌دار ساکن بدون شارش (Energized / Connected, Zero Flow)</strong>
+              <div style="color: #94a3b8; font-size: 12px;">کلید متصل است و ولتاژ وجود دارد، اما توان یا جریان عبوری صفر است (مانند ورودی بدون مصرف‌کننده). هیچ ذره متحرکی نمایش داده نمی‌شود.</div>
+            </div>
+          </div>
+          <div style="background: rgba(15,23,42,0.8); border: 1px solid rgba(100,116,139,0.3); border-radius: 8px; padding: 12px; display: flex; align-items: center; gap: 14px;">
+            <div style="width: 24px; height: 24px; border-radius: 50%; background: #334155; border: 2px dashed #64748b; flex-shrink: 0;"></div>
+            <div>
+              <strong style="color: #94a3b8; font-size: 14px;">۳. بی‌برق، مدار باز و ایزوله (De-energized / Open / Isolated)</strong>
+              <div style="color: #94a3b8; font-size: 12px;">کلید بالادست قطع یا منبع قطع است. ولتاژ و جریان مطلقاً صفر (0 V / 0 A) بوده و مسیر خاموش و مات است.</div>
+            </div>
+          </div>
+          <div style="background: rgba(15,23,42,0.8); border: 1px solid rgba(239,68,68,0.3); border-radius: 8px; padding: 12px; display: flex; align-items: center; gap: 14px;">
+            <div style="width: 24px; height: 24px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 10px #ef4444; flex-shrink: 0;"></div>
+            <div>
+              <strong style="color: #f87171; font-size: 14px;">۴. خطادار و تریپ‌خورده (Faulted / Tripped)</strong>
+              <div style="color: #94a3b8; font-size: 12px;">کلید حفاظتی (MCB/RCD/AFCI) در اثر اضافه بار، اتصال کوتاه یا نشتی زمین قطع شده و مسیر با علامت خطر مشخص می‌شود.</div>
+            </div>
+          </div>
+          <div style="background: rgba(15,23,42,0.8); border: 1px solid rgba(34,197,94,0.3); border-radius: 8px; padding: 12px; display: flex; align-items: center; gap: 14px;">
+            <div style="width: 24px; height: 24px; border-radius: 50%; background: repeating-linear-gradient(45deg, #16a34a, #16a34a 6px, #facc15 6px, #facc15 12px); flex-shrink: 0;"></div>
+            <div>
+              <strong style="color: #4ade80; font-size: 14px;">۵. هادی حفاظتی زمین (PE Grounding / Bonding)</strong>
+              <div style="color: #94a3b8; font-size: 12px;">هادی سبز-زرد متصل به شینه MET. در شرایط کارکرد عادی فاقد جریان بوده و جریانی از آن عبور نمی‌کند (ذرات خاموش). تنها در زمان خطای عایقی یا نشتی جریان فعال می‌شود.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ====================================================================== -->
+  <!-- MODAL: 37-CHAPTER COMPREHENSIVE GUIDE READER (HYB-FA-001 REV B)        -->
+  <!-- ====================================================================== -->
+  <div id="guide-modal" class="modal-backdrop">
+    <div class="modal-window guide-modal">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-title-icon">📖</div>
+          <div class="modal-title">راهنمای جامع ۳۷ فصلی طراحی و احداث سامانه خورشیدی هیبرید با باتری (HYB-FA-001 Rev B)</div>
+        </div>
+        <button id="btn-close-guide" class="modal-close">✕</button>
+      </div>
+
+      <div class="guide-layout">
+        <!-- Sidebar Table of Contents -->
+        <aside class="guide-sidebar">
+          <div class="guide-sidebar-search">
+            <input type="text" id="guide-search-input" class="guide-search-input" placeholder="🔍 جستجو در ۳۷ فصل راهنما...">
+          </div>
+          <div id="guide-chapters-list" class="guide-chapters-list">
+            <!-- Dynamically populated from GUIDE_DATA -->
+          </div>
+        </aside>
+
+        <!-- Main Chapter Reading Pane -->
+        <main id="guide-content-pane" class="guide-content-pane">
+          <!-- Dynamically loaded chapter content -->
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- MODAL: 20 CIRCUIT PRACTICE EXERCISES WORKSHOP (CHAPTER 37)             -->
+  <!-- ====================================================================== -->
+  <div id="exercises-modal" class="modal-backdrop">
+    <div class="modal-window exercises-modal">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-title-icon">📝</div>
+          <div class="modal-title">کارگاه آموزشی تمرین‌های مدار خورشیدی و محاسبات تحلیلی</div>
+        </div>
+        <button id="btn-close-exercises" class="modal-close">✕</button>
+      </div>
+
+      <div class="exercises-toolbar">
+        <div class="exercises-filters" id="exercises-category-filters">
+          <button class="exercise-filter-btn active" data-cat="all">همه تمرین‌ها (۲۰)</button>
+          <button class="exercise-filter-btn" data-cat="reading">خواندن نقشه و تجهیزات</button>
+          <button class="exercise-filter-btn" data-cat="three_phase">سه‌فاز و بارهای موتوری</button>
+          <button class="exercise-filter-btn" data-cat="ats">کلید انتقال ATSE و فرمان</button>
+          <button class="exercise-filter-btn" data-cat="earthing">ارتینگ و نول KNE</button>
+          <button class="exercise-filter-btn" data-cat="battery">باتری و پیش‌شارژ</button>
+        </div>
+        <div style="font-size:0.8rem; color:#94a3b8;">
+          💡 با کلیک روی هر دکمه سبز، حل تحلیلی و گام‌به‌گام مدار باز می‌شود.
+        </div>
+      </div>
+
+      <div id="exercises-grid-container" class="exercises-grid">
+        <!-- Dynamically rendered 20 exercise cards -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- MODAL: 618 SATBA & PBO APPROVED CONTRACTORS DIRECTORY                  -->
+  <!-- ====================================================================== -->
+  <div id="contractors-modal" class="modal-backdrop">
+    <div class="modal-window contractors-modal">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-title-icon">🏢</div>
+          <div class="modal-title">بانک اطلاعاتی ۶۱۸ پیمانکار مجاز و تشخیص صلاحیت‌شده خورشیدی ساتبا و سازمان برنامه و بودجه</div>
+        </div>
+        <button id="btn-close-contractors" class="modal-close">✕</button>
+      </div>
+
+      <div class="contractors-toolbar">
+        <div class="contractors-search-box">
+          <input type="text" id="contractors-search-input" class="guide-search-input" placeholder="🔍 جستجو بر اساس نام شرکت، شناسه ملی یا شرایط فعالیت...">
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <label style="font-size:0.8rem; color:#cbd5e1;">وضعیت گواهینامه:</label>
+          <select id="contractors-filter-cert" class="guide-search-input" style="width:auto; padding:6px 10px;">
+            <option value="all">همه شرکت‌ها (۶۱۸)</option>
+            <option value="has_cert">دارای گواهینامه برنامه و بودجه</option>
+            <option value="no_cert">فاقد گواهینامه / تایید صلاحیت موقت</option>
+          </select>
+          <span id="contractors-count-badge" style="font-size:0.8rem; font-weight:700; color:#38bdf8; background:rgba(56,189,248,0.15); padding:4px 10px; border-radius:999px; border:1px solid #38bdf8;">۶۱۸ پیمانکار</span>
+        </div>
+      </div>
+
+      <div class="contractors-table-wrapper">
+        <table class="contractors-table">
+          <thead>
+            <tr>
+              <th style="width: 50px;">ردیف</th>
+              <th style="width: 280px;">نام پیمانکار / شرکت مجری</th>
+              <th style="width: 130px;">شناسه ملی</th>
+              <th style="width: 140px;">وضعیت گواهینامه</th>
+              <th>صلاحیت، شرایط فعالیت و ظرفیت مجاز</th>
+              <th style="width: 110px;">تاریخ انقضا</th>
+            </tr>
+          </thead>
+          <tbody id="contractors-tbody">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- MODAL: 48 DISPUTE RESOLUTION MATRIX (CHAPTER 24)                       -->
+  <!-- ====================================================================== -->
+  <div id="disputes-modal" class="modal-backdrop">
+    <div class="modal-window disputes-modal">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-title-icon">⚖️</div>
+          <div class="modal-title">جدول رفع ابهامات و تعیین تکلیف اسناد طراحی مهندسی</div>
+        </div>
+        <button id="btn-close-disputes" class="modal-close">✕</button>
+      </div>
+
+      <div class="exercises-toolbar">
+        <div style="flex:1;">
+          <input type="text" id="disputes-search-input" class="guide-search-input" placeholder="🔍 جستجو در ۴۸ نکته اختلافی و تناقضات اسناد قدیمی...">
+        </div>
+        <span id="disputes-count-badge" style="font-size:0.8rem; font-weight:700; color:#fbbf24; background:rgba(245,158,11,0.15); padding:4px 10px; border-radius:999px; border:1px solid #f59e0b;">۴۸ موضوع بررسی‌شده</span>
+      </div>
+
+      <div id="disputes-grid-container" class="disputes-grid">
+        <!-- Dynamically populated -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- JAVASCRIPT MODULES IN CORRECT DEPENDENCY SEQUENCE                     -->
+  <!-- ====================================================================== -->
+  <script src="js/three.min.js"></script>
+  <script src="js/OrbitControls.js"></script>
+  <script src="js/scene-3d.js"></script>
+  <script src="js/contractors-db.js"></script>
+  <script src="js/guide-data.js"></script>
+  <script src="js/electrical-db.js"></script>
+  <script src="js/simulation-engine.js"></script>
+  <script src="js/sound-fx.js"></script>
+  <script src="js/sld-schematic.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

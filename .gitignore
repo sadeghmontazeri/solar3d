@@ -1,0 +1,7 @@
+﻿node_modules/
+dist/
+debug.log
+scratch/
+scripts/screenshot-*.png
+*.local
+.env
