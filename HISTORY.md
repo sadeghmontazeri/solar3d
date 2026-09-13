@@ -595,4 +595,62 @@ measurement into a later step where `state` is reachable, rather than spending a
 run on it now.
 
 ---
+
+---
+
+## 2026-09-13T14:52:00-04:00 — agent: `claude-opus-5` (Claude Code) — Review Gate 3 verdict + GitHub setup — `APPROVED`
+
+**Reviewed:** `work.md` Step 3. Commit `faebc80`.
+
+### Step 3 verified independently
+
+| Check | Method | Result |
+|---|---|---|
+| Bundle self-contained | `grep` for every `src=`/`href=` in `dist/solar-app.html` excluding data URIs | **zero** external references |
+| Not truncated | sum of 13 sources = 2,340,881 B vs bundle 2,341,100 B, delta **+219 B** | wrapper tags minus removed paths — arithmetic is consistent, nothing lost |
+| End of `app.js` present | grep for its final initialisation string | present |
+| Remaining external dep | `grep -c cdn.jsdelivr.net` | exactly **1** (the CSS `@import`, removed in Step 4) |
+| `dist/` not committed | `git ls-files dist/` | empty — correctly ignored |
+
+Script order is preserved exactly, `</script>` sequences are escaped, and the bundle is classic
+(non-module), so `file://` CORS does not apply. Runs from an isolated directory outside the
+repository with zero exceptions and identical telemetry badges. **Step 3 is clean.**
+
+The report accurately stated **4** font requests rather than the "exactly one" my Step 3 text
+predicted — matching the Step 1 evidence and the corrected Step 4. Reporting the measured number
+instead of the plan's number is the behaviour asked for after the Step 1b integrity note.
+
+### GitHub publication — prepared, not executed
+
+Owner requested `https://github.com/sadeghmontazeri/solar3d.git`.
+
+Done here: `origin` remote configured locally (reversible, local-only), branch `main`, working
+tree clean, 5 commits.
+
+**Not done here, deliberately:** the push itself. `gh` is not installed and no credential helper
+is configured in this environment, and handling a token or password is outside what this agent
+may do. The owner authenticates on their own machine.
+
+**Secrets scan: clean.** Run across all tracked files; the only matches were the words
+"secret"/"token"/"credentials" inside the planning documents themselves. Repository is 3.3 MB;
+largest tracked files are the three Step 1 evidence screenshots (~650 KB each).
+
+**Privacy note raised for the owner's decision:** `js/contractors-db.js` holds 618 SATBA
+contractors with legal-entity registry IDs (`شناسه ملی`), licence status and expiry dates.
+Verified: **no** personal names, phone numbers, emails or addresses — public registry data, low
+sensitivity. Publishing nonetheless makes it searchable and mirrorable, so **public vs private is
+the owner's call**. Default recommended: **private**.
+
+**`PLAN.md` Step 3b added**, covering: confirm visibility with the owner first; pre-push checks
+(clean tree, `dist/` unpublished, secrets scan); `git push -u origin main`; stop and hand over if
+authentication is requested — never type, store, or generate a credential; enable secret scanning
+and push protection afterwards; and the cross-device pull/rebase discipline that now applies.
+
+### Verdict
+
+Step 3 **approved**. Next: **Step 3b** (publish, after the owner chooses visibility), then
+**Step 4** (inline all four Vazirmatn weights and delete the CDN `@import`), which closes the
+last external dependency and completes the offline requirement.
+
+---
 <!-- Next agent: append below this line. Do not modify anything above it. -->

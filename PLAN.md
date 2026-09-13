@@ -373,6 +373,58 @@ jsdelivr font (removed in Step 4). Everything else must load from the file itsel
 
 ---
 
+#### Step 3b — Publish to GitHub ⚠️ **added at the owner's request**
+
+**Target:** `https://github.com/sadeghmontazeri/solar3d.git`
+**The `origin` remote is already configured** — the reviewer added it. Do not re-add it.
+
+**Before pushing — confirm with the owner:**
+
+> **Public or private?** Default to **private**. The repository contains
+> `js/contractors-db.js`: 618 SATBA-approved contractors with company registry IDs
+> (`شناسه ملی` for legal entities), licence status and expiry dates. The reviewer checked it —
+> there are **no** personal names, phone numbers, emails or addresses, so sensitivity is low and
+> the data is already a public registry. Even so, a push makes it searchable and mirrorable, and
+> that is the owner's call, not yours. **Ask, and wait for an answer.**
+
+**Pre-push checks (run these; paste the output):**
+```bash
+git remote -v                      # must show only origin -> sadeghmontazeri/solar3d.git
+git status --short                 # must be clean
+git ls-files dist/                 # must be EMPTY — never publish the build output
+git ls-files | wc -l               # expect ~50 files
+```
+
+A secrets scan was already run by the reviewer across all tracked files and came back clean —
+the only matches were the words "secret"/"token"/"credentials" inside the planning documents
+themselves. Re-run it before the first push anyway:
+```bash
+git grep -nIE "(api[_-]?key|secret|passwd|password|token|BEGIN [A-Z ]*PRIVATE KEY|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{20,}|xox[baprs]-)"
+```
+
+**Push:**
+```bash
+git push -u origin main
+```
+
+**Authentication:** if the push asks for credentials, **stop and hand it to the owner.** Do not
+type, paste, store, or generate a token, password, or SSH key, and never write one into a file
+or a commit. The owner authenticates on their own machine — via GitHub CLI, Git Credential
+Manager, or an SSH key they control. If the repository does not exist yet, the owner creates it.
+
+**Verify:** `git log origin/main --oneline -1` matches local `HEAD`, and the repository page
+shows the expected file tree with no `dist/` folder.
+
+**Then, in the repository settings, the owner should enable secret scanning and push protection.**
+
+**After this step, the cross-device rule applies:** commit and push at the end of every working
+block; on the other machine run `git pull --rebase` and confirm the branch and commit hash
+*before* starting work. Never leave uncommitted work behind on one machine.
+
+**Commit:** nothing new to commit — this step only publishes existing history.
+
+---
+
 #### Step 4 — Inline the Persian font → true offline
 
 **Goal:** remove the last external dependency.
