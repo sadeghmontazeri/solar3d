@@ -329,9 +329,10 @@
       failures: state.failures
     };
 
+    const activeProfile = window.SystemProfiles?.get('profile-hyb-1p-5kw-v1');
     const result = (typeof computePowerModel === 'function')
-      ? computePowerModel(input)
-      : (window.computePowerModel ? window.computePowerModel(input) : null);
+      ? computePowerModel(input, activeProfile)
+      : (window.computePowerModel ? window.computePowerModel(input, activeProfile) : null);
 
     if (result) {
       state.telemetry.pv = result.pv;
@@ -517,6 +518,76 @@
     const loadStatus = document.getElementById('hud-load-status');
     if (loadP) loadP.textContent = state.telemetry.normalLoad.p;
     if (loadStatus) loadStatus.textContent = state.telemetry.normalLoad.isPowered ? 'برق‌دار' : 'بی‌برق (خاموش)';
+
+    // 7. Dynamic Inspector Feed Summary
+    if (state.activeInspectorComponent) {
+      updateInspectorFeedSummary(state.activeInspectorComponent);
+    }
+  }
+
+  // ============================================================================
+  // Return-to-previous-view camera history stack (Step 11)
+  // ============================================================================
+  function pushCameraHistory() {
+    if (window.sceneInstance) {
+      if (typeof window.sceneInstance.pushCameraState === 'function') {
+        window.sceneInstance.pushCameraState();
+      } else {
+        if (!window.sceneInstance._cameraStack) window.sceneInstance._cameraStack = [];
+        if (window.sceneInstance.camera && window.sceneInstance.controls) {
+          window.sceneInstance._cameraStack.push({
+            pos: window.sceneInstance.camera.position.clone(),
+            target: window.sceneInstance.controls.target.clone()
+          });
+          if (window.sceneInstance._cameraStack.length > 10) {
+            window.sceneInstance._cameraStack.shift();
+          }
+        }
+      }
+    }
+    const btnPrev = document.getElementById('btn-camera-prev');
+    if (btnPrev) btnPrev.style.display = 'inline-flex';
+  }
+
+  function popCameraHistory() {
+    let hasMore = false;
+    if (window.sceneInstance) {
+      if (typeof window.sceneInstance.popCameraState === 'function') {
+        const res = window.sceneInstance.popCameraState();
+        if (typeof res === 'boolean') {
+          hasMore = res;
+        } else if (typeof res === 'number') {
+          hasMore = res > 0;
+        } else if (typeof window.sceneInstance.hasCameraHistory === 'function') {
+          hasMore = window.sceneInstance.hasCameraHistory();
+        } else {
+          hasMore = false;
+        }
+      } else if (window.sceneInstance._cameraStack && window.sceneInstance._cameraStack.length > 0) {
+        const prev = window.sceneInstance._cameraStack.pop();
+        if (prev) {
+          if (typeof window.sceneInstance._animateCamera === 'function') {
+            window.sceneInstance._animateCamera(prev.pos, prev.target, 900);
+          } else if (window.sceneInstance.camera && window.sceneInstance.controls) {
+            if (typeof window.sceneInstance.camera.position?.copy === 'function') {
+              window.sceneInstance.camera.position.copy(prev.pos);
+            }
+            if (typeof window.sceneInstance.controls.target?.copy === 'function') {
+              window.sceneInstance.controls.target.copy(prev.target);
+            }
+            if (typeof window.sceneInstance.controls.update === 'function') {
+              window.sceneInstance.controls.update();
+            }
+          }
+        }
+        hasMore = window.sceneInstance._cameraStack.length > 0;
+      }
+    }
+    const btnPrev = document.getElementById('btn-camera-prev');
+    if (btnPrev && !hasMore) {
+      btnPrev.style.display = 'none';
+    }
+    return hasMore;
   }
 
   // ============================================================================
@@ -588,6 +659,15 @@
       eps_interior: 'EPS_PANEL_INTERIOR'
     };
 
+    // Wire return to previous view button
+    const btnCameraPrev = document.getElementById('btn-camera-prev');
+    if (btnCameraPrev) {
+      btnCameraPrev.addEventListener('click', () => {
+        sound.playClick();
+        popCameraHistory();
+      });
+    }
+
     camButtons.forEach(btn => {
       btn.addEventListener('click', () => {
         sound.playClick();
@@ -597,6 +677,8 @@
         const viewpoint = btn.getAttribute('data-viewpoint');
         if (!viewpoint) return; // button shares the class but is not a viewpoint
         const mappedPreset = presetMap[viewpoint] || viewpoint;
+
+        pushCameraHistory();
 
         if (window.sceneInstance && typeof window.sceneInstance.setCameraPreset === 'function') {
           window.sceneInstance.setCameraPreset(mappedPreset);
@@ -620,6 +702,7 @@
       if (targetBtn) {
         targetBtn.click();
       } else if (window.sceneInstance) {
+        pushCameraHistory();
         window.sceneInstance.setCameraPreset(presetMap[vp] || vp);
       }
     };
@@ -1119,6 +1202,8 @@
         drawer.classList.remove('open');
         activeSelectedObjectData = null;
         manageDrawerOpContainer(null);
+        const feedSummary = document.getElementById('drawer-feed-summary');
+        if (feedSummary) feedSummary.style.display = 'none';
       });
     }
 
@@ -1143,11 +1228,190 @@
       });
     }
 
-    // Set initial component
-    renderInspectorComponent('hybrid_inverter');
+    // Set initial component without opening drawer prematurely
+    renderInspectorComponent('hybrid_inverter', false);
   }
 
-  function renderInspectorComponent(componentId) {
+  // ============================================================================
+  // STEP 11: DYNAMIC SINGLE-LINE FEEDING SUMMARY BANNER & HONEST LABELING
+  // ============================================================================
+  function updateInspectorFeedSummary(componentId) {
+    const summaryEl = document.getElementById('drawer-feed-summary');
+    if (!summaryEl) return;
+
+    const drawer = document.getElementById('inspector-drawer');
+    if (!drawer || !drawer.classList.contains('open')) {
+      summaryEl.style.display = 'none';
+      return;
+    }
+
+    const compId = (componentId || state.activeInspectorComponent || '').toLowerCase();
+    if (!compId) {
+      summaryEl.style.display = 'none';
+      return;
+    }
+
+    let statusClass = 'powered'; // 'powered' | 'deenergized' | 'warning'
+    let summaryText = '';
+
+    // 1. MDB / BUS-G & Upstream PCC
+    if (
+      compId === 'bus_g' || compId === 'q0_mcb' || compId === 'm0_meter' ||
+      compId === 'ct_pcc' || compId === 'utility_grid' || compId === 'main_board' ||
+      compId === 'qn_mcb' || compId === 'non_essential_db' || compId === 'ac_spd' ||
+      compId === 'fspd_mcb' || compId === 'ac_interior' || compId === 'ac_wiring' ||
+      compId === 'ac_terminals' || compId.includes('mdb') || compId.includes('grid_mcb')
+    ) {
+      if (state.failures.grid_blackout) {
+        statusClass = 'deenergized';
+        summaryText = 'بی‌برق — شبکه اصلی سراسری قطع است';
+      } else if (!state.breakers.q0_mcb) {
+        statusClass = 'deenergized';
+        summaryText = 'بی‌برق — کلید ورودی Q0 قطع است';
+      } else if (state.failures.grid_brownout) {
+        statusClass = 'warning';
+        summaryText = 'افت ولتاژ بحرانی شبکه سراسری (Brownout - ۱۷۵ ولت) — ریسک عملکرد تجهیزات';
+      } else {
+        statusClass = 'powered';
+        summaryText = `تغذیه مستقیم از شبکه سراسری BUS-G — برق‌دار (${state.telemetry?.grid?.v || 230} ولت)`;
+      }
+    }
+
+    // 2. EPS Board / Essential DB & Emergency Circuits
+    else if (
+      compId === 'essential_db' || compId === 'eps_board' || compId === 'qe_mcb' ||
+      compId === 'sby_switch' || compId === 'qo_mcb' || compId === 'rcbo_circuits' ||
+      compId === 'eps_rcd' || compId === 'eps_interior' || compId.includes('eps') ||
+      compId.includes('sby')
+    ) {
+      if (state.breakers.eps_rcd === false) {
+        statusClass = 'deenergized';
+        summaryText = 'بی‌برق — کلید محافظ جان EPS RCD قطع است';
+      } else if (state.sbyPosition === '0') {
+        statusClass = 'deenergized';
+        summaryText = 'بی‌برق — کلید تبدیل SBY در وضعیت صفر (ایزوله کامل)';
+      } else if (state.sbyPosition === 'II') {
+        if (state.failures.grid_blackout) {
+          statusClass = 'deenergized';
+          summaryText = 'بی‌برق در حالت بای‌پاس — شبکه اصلی سراسری قطع است';
+        } else if (!state.breakers.q0_mcb || !state.breakers.qbp_mcb) {
+          statusClass = 'deenergized';
+          summaryText = 'بی‌برق در حالت بای‌پاس — کلید بالادست شبکه قطع است';
+        } else {
+          statusClass = 'powered';
+          summaryText = 'تغذیه در حالت بای‌پاس از شبکه شهری — برق‌دار';
+        }
+      } else if (state.sbyPosition === 'I') {
+        if (!state.breakers.qe_mcb) {
+          statusClass = 'deenergized';
+          summaryText = 'بی‌برق — کلید خروجی اضطراری اینورتر (QE) قطع است';
+        } else if (state.failures.eps_overload) {
+          statusClass = 'deenergized';
+          summaryText = 'بی‌برق — تریپ اضافه‌بار خروجی اضطراری EPS اینورتر';
+        } else if (!state.telemetry?.eps?.isPowered) {
+          statusClass = 'deenergized';
+          summaryText = 'بی‌برق — پورت خروجی اضطراری (EPS) اینورتر غیرفعال است';
+        } else {
+          statusClass = 'powered';
+          summaryText = 'تغذیه از پورت خروجی اضطراری اینورتر (EPS) — برق‌دار (۲۳۰ ولت)';
+        }
+      } else {
+        statusClass = 'deenergized';
+        summaryText = 'بی‌برق — وضعیت کلید تبدیل نامشخص است';
+      }
+    }
+
+    // 3. Inverter & AC Grid Feed
+    else if (compId === 'hybrid_inverter' || compId === 'inverter' || compId === 'qg_mcb') {
+      const pvOk = state.breakers.qpv_isolator && !state.failures.blown_pv_fuse && !state.failures.dc_arc_fault && ((state.telemetry?.pv?.p || 0) > 50);
+      const batOk = state.breakers.battery_qb && (state.batterySOC > 10) && !state.failures.battery_thermal;
+      const gridOk = !state.failures.grid_blackout && state.breakers.q0_mcb && state.breakers.qg_mcb;
+
+      if (!pvOk && !batOk && !gridOk) {
+        statusClass = 'deenergized';
+        summaryText = 'بی‌برق / خاموش — هیچ منبع انرژی (PV، باتری یا شبکه) در دسترس نیست';
+      } else if (gridOk && pvOk) {
+        statusClass = 'powered';
+        summaryText = `تغذیه همزمان از آرایه PV (${state.telemetry?.pv?.p || 0}W) و شبکه سراسری — فعال (${state.telemetry?.inverter?.status || 'Active'})`;
+      } else if (gridOk && !pvOk) {
+        statusClass = 'powered';
+        summaryText = `تغذیه از شبکه سراسری (${state.telemetry?.grid?.v || 230}V) — اینورتر متصل به شبکه (${state.telemetry?.inverter?.status || 'Active'})`;
+      } else if (!gridOk && (pvOk || batOk)) {
+        statusClass = 'warning';
+        const src = pvOk && batOk ? 'آرایه PV و باتری' : (pvOk ? 'آرایه PV' : 'بانک باتری');
+        summaryText = `حالت جزیره‌ای (EPS) — تغذیه اضطراری از ${src} (باتری: ${Math.round(state.batterySOC)}%)`;
+      } else {
+        statusClass = 'deenergized';
+        summaryText = 'اینورتر در وضعیت خطا یا آماده‌باش';
+      }
+    }
+
+    // 4. Battery Bank & BMS
+    else if (
+      compId === 'battery_bank' || compId === 'battery_qb' || compId === 'bms' ||
+      compId === 'battery_shunt' || compId === 'battery' || compId.includes('battery')
+    ) {
+      if (!state.breakers.battery_qb) {
+        statusClass = 'deenergized';
+        summaryText = 'ایزوله — کلید اتوماتیک DC باتری (QB) قطع است';
+      } else if (state.failures.battery_thermal) {
+        statusClass = 'deenergized';
+        summaryText = 'خطا — اضافه دمای بحرانی باتری (BMS تریپ داده و ایزوله است)';
+      } else if (state.batterySOC <= 10) {
+        statusClass = 'warning';
+        summaryText = `هشدار — تخلیه کامل بانک باتری (${Math.round(state.batterySOC)}%) — نیازمند شارژ`;
+      } else {
+        statusClass = 'powered';
+        const isCharging = (state.telemetry?.battery?.p || 0) >= 0;
+        const act = isCharging ? 'در حال شارژ' : 'در حال دشارژ';
+        summaryText = `بانک باتری ۵۱.۲ ولت متصل به باس DC اینورتر — ${act} (${Math.abs(state.telemetry?.battery?.p || 0)}W, SOC: ${Math.round(state.batterySOC)}%)`;
+      }
+    }
+
+    // 5. DC Combiner Box & PV Array
+    else if (
+      compId === 'qpv_isolator' || compId === 'dc_box' || compId === 'pv_modules' ||
+      compId === 'string_fuse' || compId === 'string_fuse_pos' || compId === 'string_fuse_neg' ||
+      compId === 'dc_spd' || compId === 'dc_terminal_block' || compId === 'pv' ||
+      compId.includes('fuse') || compId.includes('string') || compId.includes('qpv')
+    ) {
+      if (state.failures.blown_pv_fuse) {
+        statusClass = 'deenergized';
+        summaryText = 'بی‌برق — فیوز استرینگ gPV سوخته و مدار باز است';
+      } else if (!state.breakers.qpv_isolator) {
+        statusClass = 'deenergized';
+        summaryText = 'ایزوله — کلید سکسیونر قطع زیر بار QPV قطع است';
+      } else if (state.failures.dc_arc_fault) {
+        statusClass = 'deenergized';
+        summaryText = 'خطا — خطای قوس الکتریکی DC (سامانه AFCI مدار را ایزوله کرده است)';
+      } else if ((state.telemetry?.pv?.p || 0) <= 10) {
+        statusClass = 'warning';
+        summaryText = 'ولتاژ مدار باز بدون تابش خورشید — توان خروجی صفر وات';
+      } else {
+        statusClass = 'powered';
+        summaryText = `تغذیه مستقیم از آرایه خورشیدی استرینگ PV — برق‌دار (${state.telemetry?.pv?.v || 0}V, ${state.telemetry?.pv?.i || 0}A, ${state.telemetry?.pv?.p || 0}W)`;
+      }
+    }
+
+    // 6. Earthing / MET Bar
+    else if (compId === 'met_bar' || compId.includes('met') || compId.includes('pe_bar')) {
+      statusClass = 'powered';
+      summaryText = 'شینه اتصال زمین اصلی (MET) — پتانسیل زمین متصل و هم‌بندی پایدار';
+    }
+
+    // Fallback
+    else {
+      const isBlackout = state.failures.grid_blackout;
+      statusClass = isBlackout ? 'deenergized' : 'powered';
+      summaryText = isBlackout ? 'تجهیز بی‌برق است' : 'تجهیز در وضعیت برق‌دار قرار دارد';
+    }
+
+    summaryEl.className = `drawer-feed-summary ${statusClass}`;
+    summaryEl.style.display = 'flex';
+    summaryEl.innerHTML = `<span class="feed-status-dot"></span><span class="feed-summary-text">${summaryText}</span>`;
+  }
+
+  function renderInspectorComponent(componentId, openDrawer = true) {
     if (!window.PERSIAN_ELECTRICAL_DB || !window.PERSIAN_ELECTRICAL_DB.components) return;
     const comp = window.PERSIAN_ELECTRICAL_DB.components[componentId];
     if (!comp) return;
@@ -1168,20 +1432,101 @@
       whyBtn.style.display = hasWhy ? 'flex' : 'none';
     }
 
+    // Field 4 content with honest labeling tags (reference specs + live telemetry + unmodeled notes)
+    const field4Html = (() => {
+      let liveHtml = '';
+      const cId = (componentId || '').toLowerCase();
+
+      if (
+        cId === 'q0_mcb' || cId === 'bus_g' || cId === 'main_board' ||
+        cId === 'm0_meter' || cId === 'utility_grid' || cId === 'qn_mcb' ||
+        cId === 'non_essential_db' || cId.includes('mdb')
+      ) {
+        const v = state.telemetry?.grid?.v ?? 230;
+        const p = Math.abs(state.telemetry?.grid?.p ?? 0);
+        const i = (p / (v || 230)).toFixed(1);
+        liveHtml = `
+          <div class="inspector-live-row" style="margin-top:8px; padding-top:6px; border-top:1px dashed rgba(255,255,255,0.12);">
+            <span class="tag-live-val">اندازه‌گیری زنده</span>
+            <span>ولتاژ فاز: <strong>${v} V</strong> | جریان خط: <strong>${i} A</strong> | توان عبوری: <strong>${p} W</strong></span>
+          </div>
+          <div class="inspector-unmodeled-row" style="margin-top:6px; font-size:0.75rem; color:#94a3b8;">
+            <span class="tag-unmodeled">مدل نشده</span>
+            <span>اعوجاج هارمونیکی جریان (THDi) و دمای باسبار MDB در این شبیه‌ساز مدل نشده است.</span>
+          </div>`;
+      } else if (cId === 'hybrid_inverter' || cId === 'inverter' || cId === 'qg_mcb') {
+        liveHtml = `
+          <div class="inspector-live-row" style="margin-top:8px; padding-top:6px; border-top:1px dashed rgba(255,255,255,0.12);">
+            <span class="tag-live-val">اندازه‌گیری زنده</span>
+            <span>توان خروجی: <strong>${state.telemetry?.inverter?.pOut || 0} W</strong> | فرکانس: <strong>${(state.telemetry?.inverter?.freq || 50).toFixed(1)} Hz</strong> | راندمان: <strong>${state.telemetry?.inverter?.efficiency || 97.4}%</strong></span>
+          </div>
+          <div class="inspector-unmodeled-row" style="margin-top:6px; font-size:0.75rem; color:#94a3b8;">
+            <span class="tag-unmodeled">مدل نشده</span>
+            <span>دمای هیت‌سینک و مقاومت عایقی داخلی Riso در این نسخه مدل نشده است.</span>
+          </div>`;
+      } else if (cId === 'pv_modules' || cId === 'qpv_isolator' || cId === 'dc_box' || cId.includes('fuse') || cId.includes('string')) {
+        liveHtml = `
+          <div class="inspector-live-row" style="margin-top:8px; padding-top:6px; border-top:1px dashed rgba(255,255,255,0.12);">
+            <span class="tag-live-val">اندازه‌گیری زنده</span>
+            <span>ولتاژ استرینگ: <strong>${state.telemetry?.pv?.v || 0} V</strong> | جریان: <strong>${state.telemetry?.pv?.i || 0} A</strong> | توان تولیدی: <strong>${state.telemetry?.pv?.p || 0} W</strong></span>
+          </div>
+          <div class="inspector-unmodeled-row" style="margin-top:6px; font-size:0.75rem; color:#94a3b8;">
+            <span class="tag-unmodeled">مدل نشده</span>
+            <span>دمای واقعی سلول (Tcell) و اثر گردوغبار سطحی ماژول‌ها در این نسخه مدل نشده است.</span>
+          </div>`;
+      } else if (cId === 'battery_bank' || cId === 'battery_qb' || cId === 'bms' || cId.includes('battery')) {
+        liveHtml = `
+          <div class="inspector-live-row" style="margin-top:8px; padding-top:6px; border-top:1px dashed rgba(255,255,255,0.12);">
+            <span class="tag-live-val">اندازه‌گیری زنده</span>
+            <span>ولتاژ بانک: <strong>${state.telemetry?.battery?.v || 0} V</strong> | توان: <strong>${state.telemetry?.battery?.p || 0} W</strong> | سطح شارژ (SOC): <strong>${Math.round(state.batterySOC)}%</strong></span>
+          </div>
+          <div class="inspector-unmodeled-row" style="margin-top:6px; font-size:0.75rem; color:#94a3b8;">
+            <span class="tag-unmodeled">مدل نشده</span>
+            <span>شاخص سلامت سلول‌ها (SOH) و شمارنده تعداد چرخه‌ها مدل نشده است.</span>
+          </div>`;
+      } else if (cId === 'essential_db' || cId === 'eps_board' || cId === 'qe_mcb' || cId === 'sby_switch' || cId === 'rcbo_circuits' || cId.includes('eps')) {
+        liveHtml = `
+          <div class="inspector-live-row" style="margin-top:8px; padding-top:6px; border-top:1px dashed rgba(255,255,255,0.12);">
+            <span class="tag-live-val">اندازه‌گیری زنده</span>
+            <span>ولتاژ بارهای اضطراری: <strong>${state.telemetry?.eps?.v || 0} V</strong> | توان مصرفی اضطراری: <strong>${state.telemetry?.eps?.p || 0} W</strong></span>
+          </div>
+          <div class="inspector-unmodeled-row" style="margin-top:6px; font-size:0.75rem; color:#94a3b8;">
+            <span class="tag-unmodeled">مدل نشده</span>
+            <span>جریان نشتی تفکیکی هر مدار فرعی روشنایی و پریز مدل نشده است.</span>
+          </div>`;
+      } else {
+        liveHtml = `
+          <div class="inspector-unmodeled-row" style="margin-top:6px; font-size:0.75rem; color:#94a3b8;">
+            <span class="tag-unmodeled">مدل نشده</span>
+            <span>پایش لحظه‌ای آنالوگ برای این جزئیات در شبیه‌ساز تعریف نشده است.</span>
+          </div>`;
+      }
+
+      return `<div class="field-spec-row"><span class="tag-ref-spec">مشخصات مرجع</span> <span>${comp.current_flow || '<span class="tag-unmodeled">مدل نشده</span>'}</span></div>${liveHtml}`;
+    })();
+
+    // Field 12 with honest labeling
+    const field12Html = `
+      <div class="field-spec-row"><span class="tag-ref-spec">مشخصات مرجع</span> <span>${comp.datasheet_check || '<span class="tag-unmodeled">مدل نشده</span>'}</span></div>
+      <div class="inspector-unmodeled-row" style="margin-top:6px; font-size:0.75rem; color:#94a3b8;">
+        <span class="tag-unmodeled">مدل نشده</span>
+        <span>آزمون تسریع‌شده استرس حرارتی محفظه (IEC Environmental chamber): <span class="tag-unmodeled">مدل نشده</span></span>
+      </div>`;
+
     // 12 Standard Engineering Fields definitions
     const fields = [
-      { num: 1, label: 'نام فنی و استاندارد', content: comp.name },
-      { num: 2, label: 'عملکرد و نقش مهندسی', content: comp.function },
-      { num: 3, label: 'موقعیت در پایپینگ الکتریکی', content: comp.location },
-      { num: 4, label: 'مشخصات جریان و توان عبوری', content: comp.current_flow },
-      { num: 5, label: 'تجهیزات تحت حفاظت', content: comp.protects },
-      { num: 6, label: 'موارد خارج از محدوده حفاظتی', content: comp.unprotected },
-      { num: 7, label: 'رفتار در اتصال نرمال به شبکه', content: comp.grid_normal },
-      { num: 8, label: 'رفتار در حالت قطع شبکه (جزیره‌ای)', content: comp.grid_outage },
-      { num: 9, label: 'خطاها و عیوب احتمالی', content: comp.probable_failures },
-      { num: 10, label: 'اشتباهات رایج مجریان و نصاب‌ها', content: comp.installer_mistakes },
-      { num: 11, label: 'نکات کلیدی بازرس و ناظر نظام مهندسی', content: comp.supervisor_notes },
-      { num: 12, label: 'اعتبارسنجی و انطباق با دیتاشیت IEC', content: comp.datasheet_check }
+      { num: 1, label: 'نام فنی و استاندارد', content: `<div class="field-spec-row"><span class="tag-ref-spec">مشخصات مرجع</span> <span>${comp.name}</span></div>` },
+      { num: 2, label: 'عملکرد و نقش مهندسی', content: `<div class="field-spec-row"><span class="tag-ref-spec">مشخصات مرجع</span> <span>${comp.function}</span></div>` },
+      { num: 3, label: 'موقعیت در پایپینگ الکتریکی', content: `<div class="field-spec-row"><span class="tag-ref-spec">مشخصات مرجع</span> <span>${comp.location}</span></div>` },
+      { num: 4, label: 'مشخصات جریان و توان عبوری', content: field4Html },
+      { num: 5, label: 'تجهیزات تحت حفاظت', content: `<div class="field-spec-row"><span class="tag-ref-spec">مشخصات مرجع</span> <span>${comp.protects}</span></div>` },
+      { num: 6, label: 'موارد خارج از محدوده حفاظتی', content: `<div class="field-spec-row"><span class="tag-ref-spec">مشخصات مرجع</span> <span>${comp.unprotected}</span></div>` },
+      { num: 7, label: 'رفتار در اتصال نرمال به شبکه', content: `<div class="field-spec-row"><span class="tag-ref-spec">مشخصات مرجع</span> <span>${comp.grid_normal}</span></div>` },
+      { num: 8, label: 'رفتار در حالت قطع شبکه (جزیره‌ای)', content: `<div class="field-spec-row"><span class="tag-ref-spec">مشخصات مرجع</span> <span>${comp.grid_outage}</span></div>` },
+      { num: 9, label: 'خطاها و عیوب احتمالی', content: `<div class="field-spec-row"><span class="tag-ref-spec">مشخصات مرجع</span> <span>${comp.probable_failures}</span></div>` },
+      { num: 10, label: 'اشتباهات رایج مجریان و نصاب‌ها', content: `<div class="field-spec-row"><span class="tag-ref-spec">مشخصات مرجع</span> <span>${comp.installer_mistakes}</span></div>` },
+      { num: 11, label: 'نکات کلیدی بازرس و ناظر نظام مهندسی', content: `<div class="field-spec-row"><span class="tag-ref-spec">مشخصات مرجع</span> <span>${comp.supervisor_notes}</span></div>` },
+      { num: 12, label: 'اعتبارسنجی و انطباق با دیتاشیت IEC', content: field12Html }
     ];
 
     if (accordionContainer) {
@@ -1195,7 +1540,7 @@
             <span class="accordion-chevron">▼</span>
           </div>
           <div class="accordion-body">
-            <p>${f.content}</p>
+            <div>${f.content}</div>
           </div>
         </div>
       `).join('');
@@ -1211,7 +1556,10 @@
 
     // Open drawer
     const drawer = document.getElementById('inspector-drawer');
-    if (drawer) drawer.classList.add('open');
+    if (drawer && openDrawer) drawer.classList.add('open');
+
+    // Update single-line dynamic feeding summary banner
+    updateInspectorFeedSummary(componentId);
   }
 
   function copyDrawerDetailsToClipboard() {
@@ -2232,6 +2580,7 @@
     if (btnFront) {
       btnFront.addEventListener('click', () => {
         sound.playClick();
+        pushCameraHistory();
         window.sceneInstance?.setCameraFrontView?.();
       });
     }
@@ -2239,6 +2588,7 @@
     if (btnReset) {
       btnReset.addEventListener('click', () => {
         sound.playClick();
+        pushCameraHistory();
         window.sceneInstance?.resetCamera?.();
       });
     }
@@ -2269,6 +2619,9 @@
     setInterval(() => {
       computeElectricalState();
       updateHUDView();
+      if (state.activeInspectorComponent) {
+        updateInspectorFeedSummary(state.activeInspectorComponent);
+      }
     }, 100);
 
     // Initial calculation
@@ -2289,19 +2642,27 @@
     if (categoryEl) categoryEl.textContent = `مسیر: ${data.pathId || 'داخلی'} | نوع: ${data.conductorType || 'فاز/نول/ارت'}`;
     if (whyBtn) whyBtn.style.display = 'none';
 
+    const voltText = (data.voltage != null && !isNaN(data.voltage))
+      ? `<div class="field-spec-row"><span class="tag-live-val">اندازه‌گیری زنده</span> <span>${data.voltage} V AC/DC</span></div>`
+      : `<div class="inspector-unmodeled-row"><span class="tag-unmodeled">مدل نشده</span> <span>ولتاژ لحظه‌ای این بخش در شبیه‌ساز مدل نشده است.</span></div>`;
+
+    const currText = (data.current != null && !isNaN(data.current))
+      ? `<div class="field-spec-row"><span class="tag-live-val">اندازه‌گیری زنده</span> <span>${data.current} A</span></div>`
+      : `<div class="inspector-unmodeled-row"><span class="tag-unmodeled">مدل نشده</span> <span>جریان عبوری تفکیکی این هادی در شبیه‌ساز مدل نشده است.</span></div>`;
+
     const fields = [
-      { num: 1, label: 'شناسه فنی هادی (Conductor ID)', content: data.id || 'N/A' },
-      { num: 2, label: 'ترمینال مبدا (Source Terminal)', content: data.sourceTerminalId || 'N/A' },
-      { num: 3, label: 'ترمینال مقصد (Destination Terminal)', content: data.destTerminalId || 'N/A' },
-      { num: 4, label: 'شناسه مسیر مرجع (Canonical Path ID)', content: data.pathId || 'N/A' },
-      { num: 5, label: 'نوع هادی و رنگ‌بندی استاندارد', content: data.conductorType || 'N/A' },
-      { num: 6, label: 'سطح مقطع و استاندارد هادی', content: data.spec || '6mm² مس افشان کلاس ۵/۶ استاندارد IEC 60228 با سرسیم عایق‌دار' },
-      { num: 7, label: 'وضعیت الکتریکی فعلی', content: (data.state || (data.voltage > 10 ? 'برق‌دار (Energized)' : 'بی‌برق و ایزوله (De-energized)')) },
-      { num: 8, label: 'ولتاژ لحظه‌ای', content: `${data.voltage ?? 0} V AC/DC` },
-      { num: 9, label: 'جریان عبوری برآورد شده', content: `${data.current ?? 0} A` },
-      { num: 10, label: 'منبع تغذیه بالادست (Source)', content: data.source || 'شبکه سراسری / اینورتر هایبرید' },
-      { num: 11, label: 'مدار حفاظتی متناظر', content: data.circuitId || 'تابلو توزیع' },
-      { num: 12, label: 'دستورالعمل نظارتی و ایمنی', content: 'کنترل گشتاور بستن پیچ ترمینال طبق جدول سازنده (۲.۵ تا ۳.۵ نیوتن‌متر) و بازرسی چشمی پرس سرسیم‌ها.' }
+      { num: 1, label: 'شناسه فنی هادی (Conductor ID)', content: `<div class="field-spec-row"><span class="tag-ref-spec">مشخصات مرجع</span> <span>${data.id || 'N/A'}</span></div>` },
+      { num: 2, label: 'ترمینال مبدا (Source Terminal)', content: `<div class="field-spec-row"><span class="tag-ref-spec">مشخصات مرجع</span> <span>${data.sourceTerminalId || 'N/A'}</span></div>` },
+      { num: 3, label: 'ترمینال مقصد (Destination Terminal)', content: `<div class="field-spec-row"><span class="tag-ref-spec">مشخصات مرجع</span> <span>${data.destTerminalId || 'N/A'}</span></div>` },
+      { num: 4, label: 'شناسه مسیر مرجع (Canonical Path ID)', content: `<div class="field-spec-row"><span class="tag-ref-spec">مشخصات مرجع</span> <span>${data.pathId || 'N/A'}</span></div>` },
+      { num: 5, label: 'نوع هادی و رنگ‌بندی استاندارد', content: `<div class="field-spec-row"><span class="tag-ref-spec">مشخصات مرجع</span> <span>${data.conductorType || 'N/A'}</span></div>` },
+      { num: 6, label: 'سطح مقطع و استاندارد هادی', content: `<div class="field-spec-row"><span class="tag-ref-spec">مشخصات مرجع</span> <span>${data.spec || '6mm² مس افشان کلاس ۵/۶ استاندارد IEC 60228 با سرسیم عایق‌دار'}</span></div>` },
+      { num: 7, label: 'وضعیت الکتریکی فعلی', content: `<div class="field-spec-row"><span class="tag-live-val">اندازه‌گیری زنده</span> <span>${(data.state || ((data.voltage || 0) > 10 ? 'برق‌دار (Energized)' : 'بی‌برق و ایزوله (De-energized)'))}</span></div>` },
+      { num: 8, label: 'ولتاژ لحظه‌ای', content: voltText },
+      { num: 9, label: 'جریان عبوری برآورد شده', content: currText },
+      { num: 10, label: 'منبع تغذیه بالادست (Source)', content: `<div class="field-spec-row"><span class="tag-ref-spec">مشخصات مرجع</span> <span>${data.source || 'شبکه سراسری / اینورتر هایبرید'}</span></div>` },
+      { num: 11, label: 'مدار حفاظتی متناظر', content: `<div class="field-spec-row"><span class="tag-ref-spec">مشخصات مرجع</span> <span>${data.circuitId || 'تابلو توزیع'}</span></div>` },
+      { num: 12, label: 'دستورالعمل نظارتی و ایمنی', content: `<div class="field-spec-row"><span class="tag-ref-spec">مشخصات مرجع</span> <span>کنترل گشتاور بستن پیچ ترمینال طبق جدول سازنده (۲.۵ تا ۳.۵ نیوتن‌متر) و بازرسی چشمی پرس سرسیم‌ها.</span></div>` }
     ];
 
     if (accordionContainer) {
@@ -2315,7 +2676,7 @@
             <span class="accordion-chevron">▼</span>
           </div>
           <div class="accordion-body">
-            <p>${f.content}</p>
+            <div>${f.content}</div>
           </div>
         </div>
       `).join('');
@@ -2331,6 +2692,9 @@
 
     const drawer = document.getElementById('inspector-drawer');
     if (drawer) drawer.classList.add('open');
+
+    // Update dynamic single-line feeding summary banner
+    updateInspectorFeedSummary(data.id || 'conductor');
   }
 
   // Global Orchestrator Hook for 3D Scene and SLD interactions
@@ -2339,6 +2703,17 @@
       activeSelectedObjectData = null;
       manageDrawerOpContainer(null);
       renderInspectorComponent(id);
+    },
+    updateInspectorFeedSummary,
+    pushCameraHistory,
+    popCameraHistory,
+    showCameraPrevBtn: () => {
+      const btn = document.getElementById('btn-camera-prev');
+      if (btn) btn.style.display = 'inline-flex';
+    },
+    hideCameraPrevBtn: () => {
+      const btn = document.getElementById('btn-camera-prev');
+      if (btn) btn.style.display = 'none';
     },
     onSbyStateChanged: (pos, origin) => {
       const myGeneration = ++sbyTransferGeneration;
@@ -2430,6 +2805,9 @@
 
       computeElectricalState();
       updateHUDView();
+    },
+    setBreaker: function(breakerId, stateBool, origin = 'orchestrator') {
+      this.onBreakerStateChanged(breakerId, stateBool, origin);
     },
     getState: () => state
   };

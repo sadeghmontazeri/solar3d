@@ -8,7 +8,7 @@
 
 ---
 
-## Status — updated 2026-09-13 after Review Gate 6
+## Status — updated 2026-09-14 after Review Gate 7
 
 | Phase | Steps | State |
 |---|---|---|
@@ -17,9 +17,9 @@
 | 2 Crash fixes | 5, 6 | ✅ done |
 | 3 Power accounting | 7, 7b, 8 | ✅ done — **electrical story is honest** |
 | 4 Interaction safety | 9 | ✅ done |
-| 5 One cabinet | 10, 11 | ⬅️ **next** |
-| 6 Interface declutter | 12, 13, 14 | pending — *beyond the 3–4 day commitment* |
-| 7 Multiple system families | 15a–15d, families | **scope expansion** — gated, see §PHASE 7 |
+| 5 One cabinet | 10, 11 | ✅ done — **MDB inspection & safe isolation proven** |
+| 6 Interface declutter | 12, 13, 14 | ⬅️ **next** |
+| 7 Multiple system families | 15a–15d, families | 🔄 **15a contract & 15b model param done** — see §PHASE 7 |
 
 **Defects closed:** E2 (grid double-count), E7 (`eps_rcd` inert), V1 (`_animateCamera`),
 V2 (SBY corruption), V6 (inverted flow signs), V10 (SBY stale callback), V11 (null preset).

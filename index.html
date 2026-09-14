@@ -221,7 +221,8 @@
     </div>
 
     <!-- 3D Viewport Quick Action Toolbar for Instant AC Panel Zoom & Door Control -->
-    <div class="viewport-quick-bar interactive">
+    <div id="camera-presets-bar" class="viewport-quick-bar interactive">
+      <button id="btn-camera-prev" class="btn-sceneaction" style="display:none;" title="بازگشت به نمای قبلی دوربین">↩ بازگشت به دید قبلی</button>
       <button id="quick-btn-dc-box" class="quick-bar-btn" title="زوم مستقیم به داخل کمباینر باکس DC">⚡ کمباینر باکس DC</button>
       <button id="quick-btn-dc-door" class="quick-bar-btn door-btn" title="باز و بسته کردن درب کمباینر DC">🚪 درب کمباینر DC</button>
       <button id="quick-btn-mdb" class="quick-bar-btn" title="زوم مستقیم به داخل تابلوی اصلی MDB">🔍 زوم داخل تابلو MDB</button>
@@ -492,6 +493,7 @@
     <!-- 5. RIGHT SLIDE-OUT INSPECTOR DRAWER (12 Engineering Fields)          -->
     <!-- ==================================================================== -->
     <aside id="inspector-drawer" class="inspector-drawer interactive">
+      <div id="drawer-feed-summary" class="drawer-feed-summary" style="display:none;"></div>
       <div class="drawer-header">
         <div class="drawer-title-group">
           <span id="drawer-comp-category" class="drawer-badge">هسته تبدیل انرژی</span>

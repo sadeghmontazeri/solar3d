@@ -2769,3 +2769,190 @@ input[type="range"]::-webkit-slider-thumb:hover {
   line-height: 1.6;
 }
 
+/* ==========================================================================
+   Step 11: Inspector Enhancements & Camera Return Controls
+   ========================================================================== */
+
+/* 1. Camera Return Button (#btn-camera-prev) */
+#btn-camera-prev,
+.btn-sceneaction {
+  background: rgba(15, 23, 42, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1.5px solid rgba(245, 158, 11, 0.85);
+  border-radius: var(--radius-md, 8px);
+  color: #fef08a;
+  padding: 8px 14px;
+  font-family: var(--font-persian, sans-serif);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5), inset 0 0 8px rgba(56, 189, 248, 0.2), 0 0 12px rgba(245, 158, 11, 0.35);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: right;
+  white-space: nowrap;
+  user-select: none;
+}
+
+#btn-camera-prev:hover,
+.btn-sceneaction:hover {
+  background: rgba(30, 41, 59, 0.98);
+  border-color: #38bdf8;
+  color: #38bdf8;
+  box-shadow: 0 6px 20px rgba(56, 189, 248, 0.5), inset 0 0 10px rgba(245, 158, 11, 0.3), 0 0 16px rgba(56, 189, 248, 0.4);
+  transform: translateX(3px) scale(1.02);
+}
+
+#btn-camera-prev:active,
+.btn-sceneaction:active {
+  transform: scale(0.98);
+}
+
+#btn-camera-prev .btn-icon,
+.btn-sceneaction .btn-icon {
+  font-size: 1rem;
+  filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.9));
+}
+
+/* 2. Inspector Single-line Feed Summary Banner (.drawer-feed-summary) */
+.drawer-feed-summary {
+  margin: 12px 14px 4px 14px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm, 6px);
+  font-family: var(--font-persian, sans-serif);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Powered state: emerald border, green status dot, dark-slate/emerald tint */
+.drawer-feed-summary.powered {
+  background: rgba(6, 78, 59, 0.38);
+  border: 1px solid rgba(16, 185, 129, 0.65);
+  color: #6ee7b7;
+}
+
+.drawer-feed-summary.powered .feed-status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  flex-shrink: 0;
+  display: inline-block;
+  animation: pulse-dot-green 2s infinite ease-in-out;
+}
+
+/* De-energized state: amber/rose border, red status dot */
+.drawer-feed-summary.deenergized {
+  background: rgba(136, 19, 55, 0.35);
+  border: 1px solid rgba(244, 63, 94, 0.65);
+  color: #fda4af;
+}
+
+.drawer-feed-summary.deenergized .feed-status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #f43f5e;
+  box-shadow: 0 0 8px #f43f5e;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+/* Warning / Alert state (e.g. island, bypass, brownout) */
+.drawer-feed-summary.warning {
+  background: rgba(120, 53, 15, 0.38);
+  border: 1px solid rgba(245, 158, 11, 0.65);
+  color: #fde68a;
+}
+
+.drawer-feed-summary.warning .feed-status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.feed-summary-text {
+  flex: 1;
+  word-break: break-word;
+}
+
+@keyframes pulse-dot-green {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.85); }
+}
+
+/* 3. Honest Labeling Tags: .tag-ref-spec, .tag-live-val, .tag-unmodeled */
+.tag-ref-spec {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(56, 189, 248, 0.16);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  margin-left: 6px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.tag-live-val {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(16, 185, 129, 0.16);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  margin-left: 6px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.tag-unmodeled {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(148, 163, 184, 0.16);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  margin-left: 6px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.inspector-live-row,
+.inspector-unmodeled-row,
+.field-spec-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  line-height: 1.6;
+}
+
+

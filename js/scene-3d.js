@@ -76,6 +76,8 @@ class HybridSolar3DScene {
       startLookAt: new THREE.Vector3(),
       targetLookAt: new THREE.Vector3()
     };
+    this.cameraHistory = null;
+    this.activeLabelSubsystem = null;
 
     // Camera Presets
     this.presets = {
@@ -3830,6 +3832,132 @@ class HybridSolar3DScene {
 
   resetCamera() {
     this.setCameraPreset('OVERVIEW');
+    this.setSubsystemLabelsVisible(null);
+  }
+
+  pushCameraState() {
+    if (!this.camera) return;
+    this.cameraHistory = {
+      position: this.camera.position.clone(),
+      target: this.controls ? this.controls.target.clone() : new THREE.Vector3(0, 0, 0)
+    };
+    if (typeof document !== 'undefined') {
+      const btn = document.getElementById('btn-camera-prev');
+      if (btn) btn.style.display = 'inline-flex';
+    }
+  }
+
+  popCameraState(durationMs = 900) {
+    if (this.cameraHistory) {
+      const { position, target } = this.cameraHistory;
+      this._animateCamera(position, target, durationMs);
+      this.cameraHistory = null;
+      this.setSubsystemLabelsVisible(null);
+      if (typeof document !== 'undefined') {
+        const btn = document.getElementById('btn-camera-prev');
+        if (btn) btn.style.display = 'none';
+      }
+      return true;
+    }
+    return false;
+  }
+
+  focusMDB(durationMs = 1200) {
+    this.pushCameraState();
+    this.openMDBDoor(true);
+    const targetPos = new THREE.Vector3(3.25, 2.40, -1.40);
+    const targetLookAt = new THREE.Vector3(3.20, 2.40, -2.18);
+    this._animateCamera(targetPos, targetLookAt, durationMs);
+    this.setSubsystemLabelsVisible('mdb');
+    if (typeof window !== 'undefined' && window.AppOrchestrator?.openInspectorForComponent) {
+      window.AppOrchestrator.openInspectorForComponent('bus_g');
+    }
+  }
+
+  focusSubsystem(name, durationMs = 1200) {
+    if (!name || name === 'all') {
+      this.resetCamera();
+      this.setSubsystemLabelsVisible(null);
+      return;
+    }
+    const key = typeof name === 'string' ? name.toLowerCase() : name;
+    if (key === 'mdb') {
+      this.focusMDB(durationMs);
+      return;
+    }
+
+    this.pushCameraState();
+
+    const presetMap = {
+      'pv': 'ROOFTOP',
+      'dc_box': 'DC_BOX',
+      'dc': 'DC_BOX',
+      'inverter': 'INVERTER',
+      'battery': 'BATTERY',
+      'bess': 'BATTERY',
+      'eps': 'EPS_BACKUP',
+      'met': 'EARTHING_MET'
+    };
+
+    const presetName = presetMap[key];
+    if (presetName && this.presets[presetName]) {
+      const target = this.presets[presetName];
+      if (key === 'dc_box' || key === 'dc') {
+        this.openDCDoor(true);
+      } else if (key === 'eps') {
+        this.openEPSDoor(true);
+      }
+      this._animateCamera(target.pos, target.target, durationMs);
+      this.setSubsystemLabelsVisible(key);
+    }
+  }
+
+  setSubsystemLabelsVisible(subsystemName) {
+    this.activeLabelSubsystem = subsystemName && subsystemName !== 'all' ? subsystemName.toLowerCase() : null;
+    if (!this.labels) return;
+    for (const item of this.labels) {
+      if (!item.element) continue;
+      if (!this.activeLabelSubsystem) {
+        item.element.style.opacity = '1';
+        item.element.style.pointerEvents = 'auto';
+      } else {
+        const isMatch = this._isLabelInSubsystem(item, this.activeLabelSubsystem);
+        if (isMatch) {
+          item.element.style.opacity = '1';
+          item.element.style.pointerEvents = 'auto';
+        } else {
+          item.element.style.opacity = '0.15';
+          item.element.style.pointerEvents = 'none';
+        }
+      }
+    }
+  }
+
+  _isLabelInSubsystem(item, subsystemName) {
+    if (!item || !subsystemName) return false;
+    const name = subsystemName.toLowerCase();
+    if (name === 'mdb') {
+      return item.id === 'MDB_GRID' || (this.mdbGroup && (item.targetObject === this.mdbGroup || this.mdbGroup.children.includes(item.targetObject)));
+    }
+    if (name === 'pv' || name === 'rooftop') {
+      return item.id === 'ROOFTOP_PV' || (this.roofGroup && (item.targetObject === this.roofGroup || this.roofGroup.children.includes(item.targetObject)));
+    }
+    if (name === 'dc_box' || name === 'dc') {
+      return item.id === 'DC_BOX' || (this.dcEnclosure && (item.targetObject === this.dcEnclosure || this.dcEnclosure.children.includes(item.targetObject)));
+    }
+    if (name === 'inverter') {
+      return item.id === 'INVERTER' || (this.inverterGroup && (item.targetObject === this.inverterGroup || this.inverterGroup.children.includes(item.targetObject)));
+    }
+    if (name === 'battery' || name === 'bess') {
+      return item.id === 'BATTERY' || (this.bessGroup && (item.targetObject === this.bessGroup || this.bessGroup.children.includes(item.targetObject)));
+    }
+    if (name === 'eps') {
+      return item.id === 'EPS_BACKUP' || (this.epsGroup && (item.targetObject === this.epsGroup || this.epsGroup.children.includes(item.targetObject)));
+    }
+    if (name === 'met') {
+      return item.id === 'EARTHING_MET' || (this.metGroup && (item.targetObject === this.metGroup || this.metGroup.children.includes(item.targetObject)));
+    }
+    return false;
   }
 
   toggleEnclosureShell() {
@@ -3876,26 +4004,40 @@ class HybridSolar3DScene {
 
     if (!name || name === 'all') {
       this.scene.traverse(obj => {
-        if (obj.isMesh && obj.material && obj !== this.groundMesh) {
-          obj.material.opacity = 1.0;
-          obj.material.transparent = false;
+        if (obj.isMesh && obj.userData && obj.userData._origMat && obj.material) {
+          obj.material.opacity = obj.userData._origMat.opacity;
+          obj.material.transparent = obj.userData._origMat.transparent;
         }
       });
       return;
     }
 
-    const activeGroups = subsystemGroups[name] || [];
+    const key = typeof name === 'string' ? name.toLowerCase() : name;
+    const activeGroups = subsystemGroups[key] || subsystemGroups[name] || [];
+    const activeMeshes = new Set();
+    for (const g of activeGroups) {
+      if (g && typeof g.traverse === 'function') {
+        g.traverse(child => {
+          if (child.isMesh) activeMeshes.add(child);
+        });
+      }
+    }
+
     this.scene.traverse(obj => {
       if (obj.isMesh && obj.material && obj !== this.groundMesh) {
-        let isInActive = false;
-        for (const g of activeGroups) {
-          if (g && (obj === g || g.children.includes(obj) || obj.parent === g)) {
-            isInActive = true;
-            break;
-          }
+        if (obj.userData._origMat === undefined) {
+          obj.userData._origMat = {
+            opacity: obj.material.opacity,
+            transparent: obj.material.transparent
+          };
         }
-        obj.material.transparent = !isInActive;
-        obj.material.opacity = isInActive ? 1.0 : 0.2;
+        if (!obj.userData._matCloned) {
+          obj.material = obj.material.clone();
+          obj.userData._matCloned = true;
+        }
+        const isActive = activeMeshes.has(obj);
+        obj.material.transparent = !isActive ? true : obj.userData._origMat.transparent;
+        obj.material.opacity = isActive ? obj.userData._origMat.opacity : 0.15;
       }
     });
   }
@@ -4120,6 +4262,14 @@ class HybridSolar3DScene {
 
     const tempV = new THREE.Vector3();
     for (const item of this.labels) {
+      if (this.activeLabelSubsystem && this.activeLabelSubsystem !== 'all') {
+        const isMatch = this._isLabelInSubsystem(item, this.activeLabelSubsystem);
+        if (!isMatch) {
+          item.element.style.display = 'none';
+          continue;
+        }
+      }
+
       item.targetObject.getWorldPosition(tempV);
 
       // Hide badge if camera is zoomed close into equipment to avoid obscuring internal components & wiring
@@ -4266,7 +4416,7 @@ class HybridSolar3DScene {
     this.openDCDoor(!this.dcDoorOpen);
   }
 
-  openDCDoor(isOpen) {
+  openDCDoor(isOpen = true) {
     this.dcDoorOpen = !!isOpen;
     this.dcDoorTargetAngle = this.dcDoorOpen ? -Math.PI * 0.65 : 0;
     this._emit('doorChange', { panel: 'dc', isOpen: this.dcDoorOpen });
@@ -4276,7 +4426,7 @@ class HybridSolar3DScene {
     this.openMDBDoor(!this.mdbDoorOpen);
   }
 
-  openMDBDoor(isOpen) {
+  openMDBDoor(isOpen = true) {
     this.mdbDoorOpen = !!isOpen;
     this.mdbDoorTargetAngle = this.mdbDoorOpen ? -Math.PI * 0.65 : 0;
     this._emit('doorChange', { panel: 'mdb', isOpen: this.mdbDoorOpen });
@@ -4286,7 +4436,7 @@ class HybridSolar3DScene {
     this.openEPSDoor(!this.epsDoorOpen);
   }
 
-  openEPSDoor(isOpen) {
+  openEPSDoor(isOpen = true) {
     this.epsDoorOpen = !!isOpen;
     this.epsDoorTargetAngle = this.epsDoorOpen ? -Math.PI * 0.65 : 0;
     this._emit('doorChange', { panel: 'eps', isOpen: this.epsDoorOpen });

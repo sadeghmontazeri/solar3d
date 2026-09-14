@@ -1159,3 +1159,51 @@ Next step: **Phase 5, Step 10** (`Rewrite isolateSubsystem() safely`).
 ---
 <!-- Next agent: append below this line. Do not modify anything above it. -->
 
+## 2026-09-14T04:20:00-04:00 — agent: `Antigravity` (Agent 6, Documentation and Work Log Integrator) — Review Gate 7 / Phase 5 (Steps 10 & 11) & Phase 7 Step 15b Complete — `APPROVED / DONE`
+
+**Reviewed:** `work.md` Steps 10, 11, and 15b by 6 agents collaborative swarm.
+
+### Implementation Summary
+1. **Safe Subsystem Isolation (`js/scene-3d.js`)**:
+   - Rewrote `isolateSubsystem(name)` with material cloning (`_matCloned`) to decouple shared Three.js material instances.
+   - Stored original material state in `_origMat` (`opacity` and `transparent`).
+   - Active subsystem meshes retain their original opacity while external meshes are dimmed to 0.15.
+   - Reset mode (`isolateSubsystem('all')`) restores opacity without forcing `transparent = false`, preserving transparency for 18 glass doors, smoked polycarbonate covers, and duct casings.
+   - Verified 5 consecutive cycles with 0.0000 maximum drift (no darkening).
+2. **MDB Cabinet Inspection Flow & Dynamic Feed Banner (`index.html`, `css/styles.css`, `js/app.js`, `js/scene-3d.js`)**:
+   - Implemented camera state history (`pushCameraState` / `popCameraState`) and wired `#btn-camera-prev` (`↩ بازگشت به دید قبلی`).
+   - Implemented `focusMDB()` with automated door opening and right-offset framing to keep the cabinet unobstructed by the 480px Persian inspector drawer.
+   - Added dynamic `#drawer-feed-summary` banner at the top of the inspector drawer rendering live feeding status («تغذیه مستقیم از شبکه سراسری BUS-G — برق‌دار» vs «بی‌برق — کلید ورودی Q0 قطع است»).
+   - Applied honest engineering tags across all 12 inspector fields and conductor telemetry (`.tag-ref-spec` «مشخصات مرجع», `.tag-live-val` «اندازه‌گیری زنده», `.tag-unmodeled` «مدل نشده»).
+3. **Power Model Parameterization (`js/power-model.js`, `tests/power-model.test.js`)**:
+   - Refactored pure function `computePowerModel(input, profile)` to read ratings and topological presence flags from `SystemProfile`.
+   - Enabled graceful battery bypass when `batteryBank.present: false`.
+   - Verified 100% backward compatibility: 9/9 power model tests + 3/3 profile tests passing verbatim.
+4. **Standalone Bundle Pipeline (`build.js`)**:
+   - Verified offline single-file build `dist/solar-app.html` at 2.59 MB (2,712,234 bytes) with 0 external network requests.
+
+### Verification Evidence
+- **Automated CDP Suite (`scripts/verify_step10_11.js`)**:
+  - Check 1 (`isolateSubsystem('mdb')`): **PASS ✓** (145 opaque meshes at 1.0, 6 smoked/transparent meshes at design opacity, 113 external meshes dimmed to 0.15).
+  - Check 2 (`isolateSubsystem('all')` & Glass): **PASS ✓** (654 meshes restored, 18 glass doors/casings retained `transparent: true`).
+  - Check 3 (5x Isolation/Reset Drift): **PASS ✓** (Max drift = 0.0000 across 5 full cycles).
+  - Check 4 (MDB Focus, Feed Banner & Return): **PASS ✓** (Door opened, `#btn-camera-prev` visible, banner toggles dynamically on Q0 change, camera returns with < 1e-15 delta).
+  - Check 5 (Profile Parameterization 15b): **PASS ✓** (Browser evaluation scales PV power from 4570 W to 6528 W, handles no-battery topology cleanly).
+  - Exceptions Count: **0**
+  - Screenshots Captured:
+    - `evidence/step10/step10_isolation_mdb.png`
+    - `evidence/step10/step10_reset_all.png`
+    - `evidence/step11/step11_mdb_cabinet_focused.png`
+- **Electrical Unit Tests (`tests/power-model.test.js`)**:
+  - All 9 power tests (P1..P9, P9-PV) + 3 profile tests (PR1..PR3) passed (12/12).
+
+### Review Gate 7 Verdict
+Phase 5 (Steps 10 and 11) is **APPROVED and DONE**.
+Step 15b (Phase 7 Model Parameterization) is **DONE**.
+Commitment Status: **Core 3–4 Day Commitment (Steps 0 through 11) is 100% COMPLETE**.
+Next action: **Phase 6** (Steps 12–14: Interface Declutter, collapsible drawer, tools menu) and Phase 7 (Steps 15c–15d: Parametric 3D scene builder & multi-profile switcher).
+
+---
+<!-- Next agent: append below this line. Do not modify anything above it. -->
+
+
