@@ -8,7 +8,7 @@
 
 ---
 
-## Status — updated 2026-09-13 after Review Gate 5
+## Status — updated 2026-09-13 after Review Gate 6
 
 | Phase | Steps | State |
 |---|---|---|
@@ -16,8 +16,8 @@
 | 1 Safety net | 2, 3, 3b, 4 | ✅ done — **app is genuinely offline** |
 | 2 Crash fixes | 5, 6 | ✅ done |
 | 3 Power accounting | 7, 7b, 8 | ✅ done — **electrical story is honest** |
-| 4 Interaction safety | 9 | ⬅️ **next** |
-| 5 One cabinet | 10, 11 | pending |
+| 4 Interaction safety | 9 | ✅ done |
+| 5 One cabinet | 10, 11 | ⬅️ **next** |
 | 6 Interface declutter | 12, 13, 14 | pending — *beyond the 3–4 day commitment* |
 | 7 Multiple system families | 15a–15d, families | **scope expansion** — gated, see §PHASE 7 |
 

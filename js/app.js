@@ -709,6 +709,9 @@
             btnToggleEpsDoor.textContent = data.isOpen ? '🚪 بستن درب EPS' : '🚪 درب تابلو EPS';
           }
         }
+        if (typeof refreshDrawerOperationState === 'function') {
+          refreshDrawerOperationState();
+        }
       });
     }
 
@@ -840,8 +843,270 @@
   }
 
   // ============================================================================
-  // 7. RIGHT INSPECTOR DRAWER (12 Standard Engineering Fields)
+  // 7. RIGHT INSPECTOR DRAWER (12 Standard Engineering Fields & Operations)
   // ============================================================================
+  let activeSelectedObjectData = null;
+
+  function resolveSwitchgearTargetId(id) {
+    if (!id) return id;
+    if (id === 'dc_isolator' || id === 'qpv_isolator' || id === 'sld-dc-iso-1') return 'dc_iso_1';
+    if (id === 'sld-dc-iso-2') return 'dc_iso_2';
+    if (id === 'battery_ocpd' || id === 'battery_qb' || id === 'sld-bat-fuse') return 'bat_breaker';
+    if (id === 'grid_mcb' || id === 'q0_mcb' || id === 'grid_incomer_mcb' || id === 'sld-q0') return 'grid_mcb';
+    if (id === 'eps_mcb' || id === 'qe_mcb' || id === 'sld-qe') return 'eps_mcb';
+    if (id === 'qo_mcb' || id === 'eps_incomer_mcb' || id === 'sld-qo') return 'qo_mcb';
+    if (id === 'qbp_mcb' || id === 'grid_bypass_mcb' || id === 'sld-qbp') return 'qbp_mcb';
+    if (id === 'eps_rcd' || id === 'sld-rcd') return 'eps_rcd';
+    return id;
+  }
+
+  function getBreakerCurrentState(id) {
+    if (!id) return undefined;
+    const targetId = resolveSwitchgearTargetId(id);
+    if (window.sceneInstance?.switchgear) {
+      const sw = window.sceneInstance.switchgear[targetId] || window.sceneInstance.switchgear[id];
+      if (sw && sw.state !== undefined) {
+        return sw.state;
+      }
+    }
+    if (state.breakers) {
+      if (state.breakers[id] !== undefined) return state.breakers[id];
+      if (state.breakers[targetId] !== undefined) return state.breakers[targetId];
+    }
+    return undefined;
+  }
+
+  function manageDrawerOpContainer(data) {
+    const opContainer = document.getElementById('drawer-op-container');
+    if (!opContainer) return;
+
+    if (!data || !data.action) {
+      opContainer.style.display = 'none';
+      opContainer.innerHTML = '';
+      activeSelectedObjectData = null;
+      return;
+    }
+
+    activeSelectedObjectData = data;
+
+    if (data.action === 'toggle') {
+      if (data.id === 'sby_switch') {
+        opContainer.style.display = 'flex';
+        opContainer.innerHTML = `
+          <div class="drawer-op-info">
+            <span class="op-info-icon">ℹ️</span>
+            <span>موقعیت کلید تبدیل SBY صرفاً از طریق دکمه‌های پنل فرمان (I / 0 / II) تغییر می‌کند.</span>
+          </div>
+        `;
+        return;
+      }
+
+      opContainer.style.display = 'flex';
+      const curState = getBreakerCurrentState(data.id);
+      let stateLabel = '';
+      let stateClass = '';
+      let badgeHtml = '';
+
+      if (curState === true) {
+        stateLabel = ' [وضعیت: وصل / ON]';
+        stateClass = 'state-on';
+        badgeHtml = `<span class="btn-op-state state-on">وصل (ON)</span>`;
+      } else if (curState === false) {
+        stateLabel = ' [وضعیت: قطع / OFF]';
+        stateClass = 'state-off';
+        badgeHtml = `<span class="btn-op-state state-off">قطع (OFF)</span>`;
+      }
+
+      opContainer.innerHTML = `
+        <button id="btn-drawer-operate-breaker" class="btn-drawer-operate ${stateClass}" title="تغییر وضعیت کلید در مدل سه‌بعدی">
+          <span class="btn-op-icon">⚡</span>
+          <span class="btn-op-text">قطع / وصل کلید (Toggle)${stateLabel}</span>
+          ${badgeHtml}
+        </button>
+      `;
+
+      const btn = document.getElementById('btn-drawer-operate-breaker');
+      if (btn) {
+        btn.addEventListener('click', () => {
+          if (sound && typeof sound.playBreakerSnap === 'function') {
+            sound.playBreakerSnap();
+          } else if (sound && typeof sound.playClick === 'function') {
+            sound.playClick();
+          }
+          if (window.sceneInstance && typeof window.sceneInstance.toggleBreaker3D === 'function') {
+            window.sceneInstance.toggleBreaker3D(data.id);
+          }
+          setTimeout(() => {
+            manageDrawerOpContainer(data);
+          }, 60);
+        });
+      }
+      return;
+    }
+
+    if (data.action === 'toggle_dc_door') {
+      opContainer.style.display = 'flex';
+      const isOpen = !!window.sceneInstance?.dcDoorOpen;
+      const badgeHtml = isOpen 
+        ? `<span class="btn-op-state state-open">درب باز است</span>` 
+        : `<span class="btn-op-state state-closed">درب بسته است</span>`;
+
+      opContainer.innerHTML = `
+        <button id="btn-drawer-operate-dc-door" class="btn-drawer-operate btn-door" title="باز / بستن درب تابلوی DC">
+          <span class="btn-op-icon">🚪</span>
+          <span class="btn-op-text">باز / بستن درب تابلوی DC</span>
+          ${badgeHtml}
+        </button>
+      `;
+
+      const btn = document.getElementById('btn-drawer-operate-dc-door');
+      if (btn) {
+        btn.addEventListener('click', () => {
+          if (sound && typeof sound.playClick === 'function') sound.playClick();
+          if (window.sceneInstance && typeof window.sceneInstance.toggleDCDoor === 'function') {
+            window.sceneInstance.toggleDCDoor();
+          }
+          setTimeout(() => {
+            manageDrawerOpContainer(data);
+          }, 60);
+        });
+      }
+      return;
+    }
+
+    if (data.action === 'toggle_mdb_door') {
+      opContainer.style.display = 'flex';
+      const isOpen = !!window.sceneInstance?.mdbDoorOpen;
+      const badgeHtml = isOpen 
+        ? `<span class="btn-op-state state-open">درب باز است</span>` 
+        : `<span class="btn-op-state state-closed">درب بسته است</span>`;
+
+      opContainer.innerHTML = `
+        <button id="btn-drawer-operate-mdb-door" class="btn-drawer-operate btn-door" title="باز / بستن درب تابلوی اصلی MDB">
+          <span class="btn-op-icon">🚪</span>
+          <span class="btn-op-text">باز / بستن درب تابلوی اصلی MDB</span>
+          ${badgeHtml}
+        </button>
+      `;
+
+      const btn = document.getElementById('btn-drawer-operate-mdb-door');
+      if (btn) {
+        btn.addEventListener('click', () => {
+          if (sound && typeof sound.playClick === 'function') sound.playClick();
+          if (window.sceneInstance && typeof window.sceneInstance.toggleMDBDoor === 'function') {
+            window.sceneInstance.toggleMDBDoor();
+          }
+          setTimeout(() => {
+            manageDrawerOpContainer(data);
+          }, 60);
+        });
+      }
+      return;
+    }
+
+    if (data.action === 'toggle_eps_door') {
+      opContainer.style.display = 'flex';
+      const isOpen = !!window.sceneInstance?.epsDoorOpen;
+      const badgeHtml = isOpen 
+        ? `<span class="btn-op-state state-open">درب باز است</span>` 
+        : `<span class="btn-op-state state-closed">درب بسته است</span>`;
+
+      opContainer.innerHTML = `
+        <button id="btn-drawer-operate-eps-door" class="btn-drawer-operate btn-door" title="باز / بستن درب تابلوی بارهای ضروری EPS">
+          <span class="btn-op-icon">🚪</span>
+          <span class="btn-op-text">باز / بستن درب تابلوی بارهای ضروری EPS</span>
+          ${badgeHtml}
+        </button>
+      `;
+
+      const btn = document.getElementById('btn-drawer-operate-eps-door');
+      if (btn) {
+        btn.addEventListener('click', () => {
+          if (sound && typeof sound.playClick === 'function') sound.playClick();
+          if (window.sceneInstance && typeof window.sceneInstance.toggleEPSDoor === 'function') {
+            window.sceneInstance.toggleEPSDoor();
+          }
+          setTimeout(() => {
+            manageDrawerOpContainer(data);
+          }, 60);
+        });
+      }
+      return;
+    }
+
+    // Otherwise: hide #drawer-op-container
+    opContainer.style.display = 'none';
+    opContainer.innerHTML = '';
+    activeSelectedObjectData = null;
+  }
+
+  function refreshDrawerOperationState() {
+    if (activeSelectedObjectData) {
+      manageDrawerOpContainer(activeSelectedObjectData);
+    }
+  }
+
+  function mapObjectIdToDbComponent(rawId) {
+    if (!rawId) return null;
+    let compId = rawId.toLowerCase();
+    if (compId.includes('fuse')) {
+      if (compId.includes('pos')) return 'string_fuse_pos';
+      if (compId.includes('neg')) return 'string_fuse_neg';
+      return 'string_fuse';
+    }
+    if (compId.includes('iso') || compId.includes('dc_switch') || compId.includes('qpv')) return 'qpv_isolator';
+    if (compId.includes('dc_spd')) return 'dc_spd';
+    if (compId.includes('pv') || compId.includes('string')) return 'pv_modules';
+    if (compId.includes('inverter') && !compId.includes('internals')) return 'hybrid_inverter';
+    if (compId.includes('battery') && !compId.includes('ocpd') && !compId.includes('bms')) return 'battery_bank';
+    if (compId.includes('bms')) return 'bms';
+    if (compId.includes('ocpd') || compId.includes('bat_breaker')) return 'battery_qb';
+    if (compId.includes('grid_mcb') || compId === 'q1' || compId.includes('main_service')) return 'q0_mcb';
+    if (compId.includes('inv_grid') || compId === 'q2') return 'qg_mcb';
+    if (compId.includes('ac_spd') || compId.includes('spd_backup')) return 'ac_spd';
+    if (compId.includes('ct') || compId.includes('split_core')) return 'ct_pcc';
+    if (compId.includes('meter') || compId.includes('smart_meter')) return 'm0_meter';
+    if (compId.includes('mdb') || compId.includes('main_board')) return 'bus_g';
+    if (compId.includes('eps_mcb') || compId.includes('qe')) return 'qe_mcb';
+    if (compId.includes('sby')) return 'sby_switch';
+    if (compId.includes('rcbo')) return 'rcbo_circuits';
+    if (compId.includes('rcd')) return 'essential_db';
+    if (compId.includes('eps') || compId.includes('critical')) return 'essential_db';
+    if (compId.includes('pe_bar') || compId.includes('met') || compId.includes('earth')) return 'met_bar';
+    if (compId.includes('terminal')) return 'dc_terminal_block';
+    if (compId.includes('dc_door')) return 'qpv_isolator';
+    return compId;
+  }
+
+  function handleObjectSelected(data) {
+    if (!data) return;
+
+    // Open drawer
+    const drawer = document.getElementById('inspector-drawer');
+    if (drawer) drawer.classList.add('open');
+
+    // Display component info
+    if (data.type === 'INTERNAL_CONDUCTOR' || data.type === 'CONDUCTOR' || data.sourceTerminalId) {
+      renderInspectorConductor(data);
+    } else if (data.id) {
+      const compId = mapObjectIdToDbComponent(data.id);
+      if (compId && window.PERSIAN_ELECTRICAL_DB?.components?.[compId]) {
+        renderInspectorComponent(compId);
+      } else {
+        const titleEl = document.getElementById('drawer-comp-name');
+        const categoryEl = document.getElementById('drawer-comp-category');
+        if (titleEl && data.name) titleEl.textContent = data.name;
+        if (categoryEl && data.desc) categoryEl.textContent = data.desc;
+      }
+    } else if (data.name) {
+      const titleEl = document.getElementById('drawer-comp-name');
+      if (titleEl) titleEl.textContent = data.name;
+    }
+
+    // Manage #drawer-op-container
+    manageDrawerOpContainer(data);
+  }
+
   function setupInspectorDrawer() {
     const drawer = document.getElementById('inspector-drawer');
     const closeBtn = document.getElementById('btn-close-drawer');
@@ -852,6 +1117,8 @@
       closeBtn.addEventListener('click', () => {
         sound.playClick();
         drawer.classList.remove('open');
+        activeSelectedObjectData = null;
+        manageDrawerOpContainer(null);
       });
     }
 
@@ -866,6 +1133,13 @@
       whyBtn.addEventListener('click', () => {
         sound.playClick();
         openWhyModalForCurrentComponent();
+      });
+    }
+
+    // Connect objectSelected if sceneInstance is already instantiated
+    if (window.sceneInstance && typeof window.sceneInstance.on === 'function') {
+      window.sceneInstance.on('objectSelected', (data) => {
+        handleObjectSelected(data);
       });
     }
 
@@ -1923,48 +2197,34 @@
         } else {
           window.AppOrchestrator.onBreakerStateChanged(data.id, data.state, '3d');
         }
+        if (typeof refreshDrawerOperationState === 'function') {
+          refreshDrawerOperationState();
+        }
       });
 
-      // Connect 3D object click to 12-field inspector drawer
-      window.sceneInstance.on('objectClick', (data) => {
+      // Step 9: Listen to objectSelected for safe selection and inspector drawer operation controls
+      let lastSelectionTime = 0;
+      let lastSelectionKey = null;
+
+      const on3DSelect = (data) => {
         if (!data) return;
-        sound.playClick();
-        if (data.type === 'INTERNAL_CONDUCTOR' || data.type === 'CONDUCTOR' || data.sourceTerminalId) {
-          renderInspectorConductor(data);
+        const now = performance.now();
+        const key = (data.id || '') + '_' + (data.action || '') + '_' + (data.name || '');
+        if (key && key === lastSelectionKey && (now - lastSelectionTime < 150)) {
           return;
         }
-        if (data.id) {
-          let compId = data.id.toLowerCase();
-          if (compId.includes('fuse')) {
-            if (compId.includes('pos')) compId = 'string_fuse_pos';
-            else if (compId.includes('neg')) compId = 'string_fuse_neg';
-            else compId = 'string_fuse';
-          }
-          else if (compId.includes('iso') || compId.includes('dc_switch') || compId.includes('qpv')) compId = 'qpv_isolator';
-          else if (compId.includes('dc_spd')) compId = 'dc_spd';
-          else if (compId.includes('pv') || compId.includes('string')) compId = 'pv_modules';
-          else if (compId.includes('inverter') && !compId.includes('internals')) compId = 'hybrid_inverter';
-          else if (compId.includes('battery') && !compId.includes('ocpd') && !compId.includes('bms')) compId = 'battery_bank';
-          else if (compId.includes('bms')) compId = 'bms';
-          else if (compId.includes('ocpd') || compId.includes('bat_breaker')) compId = 'battery_qb';
-          else if (compId.includes('grid_mcb')) compId = 'q0_mcb';
-          else if (compId.includes('ac_spd')) compId = 'ac_spd';
-          else if (compId.includes('ct') || compId.includes('split_core')) compId = 'ct_pcc';
-          else if (compId.includes('meter') || compId.includes('smart_meter')) compId = 'm0_meter';
-          else if (compId.includes('mdb') || compId.includes('main_board')) compId = 'bus_g';
-          else if (compId.includes('eps_mcb') || compId.includes('qe')) compId = 'qe_mcb';
-          else if (compId.includes('sby')) compId = 'sby_switch';
-          else if (compId.includes('rcd')) compId = 'essential_db';
-          else if (compId.includes('rcbo')) compId = 'rcbo_circuits';
-          else if (compId.includes('eps') || compId.includes('critical')) compId = 'essential_db';
-          else if (compId.includes('pe_bar') || compId.includes('met') || compId.includes('earth')) compId = 'met_bar';
-          else if (compId.includes('terminal')) compId = 'dc_terminal_block';
-
-          if (window.PERSIAN_ELECTRICAL_DB?.components?.[compId]) {
-            renderInspectorComponent(compId);
-          }
+        lastSelectionTime = now;
+        lastSelectionKey = key;
+        if (sound && typeof sound.playClick === 'function') sound.playClick();
+        if (typeof handleObjectSelected === 'function') {
+          handleObjectSelected(data);
         }
-      });
+      };
+
+      window.sceneInstance.on('objectSelected', on3DSelect);
+
+      // Keep objectClick compatible
+      window.sceneInstance.on('objectClick', on3DSelect);
     }
 
     // Setup Camera View & Legend Buttons
@@ -2076,6 +2336,8 @@
   // Global Orchestrator Hook for 3D Scene and SLD interactions
   window.AppOrchestrator = {
     openInspectorForComponent: (id) => {
+      activeSelectedObjectData = null;
+      manageDrawerOpContainer(null);
       renderInspectorComponent(id);
     },
     onSbyStateChanged: (pos, origin) => {
@@ -2148,7 +2410,8 @@
         'grid_bypass_mcb': ['qbp_mcb', 'sld-qbp'],
         'qo_mcb': ['eps_incomer_mcb', 'sld-qo'],
         'eps_incomer_mcb': ['qo_mcb', 'sld-qo'],
-        'eps_rcd': ['sld-rcd'],
+        'eps_rcd': ['sld-rcd', 'crit_rcbo_1'],
+        'crit_rcbo_1': ['eps_rcd', 'sld-rcd'],
         'fspd_mcb': ['spd_backup_mcb', 'sld-fspd-mcb'],
         'spd_backup_mcb': ['fspd_mcb', 'sld-fspd-mcb']
       };

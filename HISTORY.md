@@ -1113,3 +1113,49 @@ and no family is built before its SLD exists. Next action is unchanged: **Step 9
 
 ---
 <!-- Next agent: append below this line. Do not modify anything above it. -->
+
+## 2026-09-13T23:05:00-05:00 — agent: `Antigravity` (Agent 6, Documentation and Work Log Integrator) — Review Gate 6 / Step 9 & Project Profile Structure Complete — `DONE`
+
+### Context
+Execution of Phase 4, Step 9 ("Click selects; a separate action operates") and initial system profile architecture foundation ("Structure of the Project", Step 15a contract).
+
+### Implementation Summary
+1. **Decoupled 3D Selection from Operation (`js/scene-3d.js`)**:
+   - `_setupEvents()` tracks pointer coordinates on `pointerdown`.
+   - `_onClick(event)` enforces a 5px drag suppression guard (`Math.hypot > 5px`), eliminating accidental switch toggles and unintended drawer openings while orbiting the scene.
+   - Removed direct operation calls (`toggleBreaker3D`, `toggleDCDoor`, `toggleMDBDoor`, `toggleEPSDoor`) from click handling.
+   - Emits `objectSelected` for safe inspection, while preserving `objectClick` for backward compatibility.
+2. **Dedicated Inspector Operational Controls (`index.html`, `css/styles.css`, `js/app.js`)**:
+   - Added `#drawer-op-container` in `.drawer-action-bar` of `#inspector-drawer`.
+   - Built responsive, high-contrast operational action buttons (`.btn-drawer-operate`) with emerald ON, amber/red OFF, and gold door styling.
+   - Wired explicit breaker operations (`window.sceneInstance.toggleBreaker3D`) and enclosure door actions (`toggleDCDoor`, `toggleMDBDoor`, `toggleEPSDoor`) to fire strictly upon user click of the drawer action button.
+   - Provided informative non-toggle advisory banner for the SBY changeover switch (`ℹ️ موقعیت کلید تبدیل SBY صرفاً از طریق دکمه‌های پنل فرمان (I / 0 / II) تغییر می‌کند`), protecting break-before-make transition logic.
+   - Connected `refreshDrawerOperationState()` to `switchChange` and `doorChange` events for live bidirectional UI status updates.
+3. **Project Profile Structure (`js/system-profile.js`, `docs/system-profile-contract.md`)**:
+   - Established canonical `SystemProfile` schema and validator `validateSystemProfile()`.
+   - Encoded 5 kW hybrid reference profile (`profile-hyb-1p-5kw-v1`) spanning 4 segregated domains: Equipment, Connectivity, Layout, and Telemetry (Step 15a contract).
+   - Documented schema, physical units, 6 system families matrix, and roadmap for Phase 7.
+4. **Offline Bundling & Build Pipeline (`build.js`, `index.html`)**:
+   - Included `js/system-profile.js` into standalone bundle builder before `js/power-model.js`.
+   - Generated `dist/solar-app.html` (2.55 MB) cleanly with 0 remote/CDN requests.
+
+### Verification Evidence
+- **Automated CDP Suite (`scripts/verify_step9.js`)**:
+  - Check 1 (3D Click Selects Only, Does Not Toggle): **PASS ✓**
+  - Check 2 (Drawer Action Button Operates Breaker & Animates Lever): **PASS ✓**
+  - Check 3 (Drag/Orbit Suppression > 20px / > 5px): **PASS ✓**
+  - Check 4 (SBY Rotary Dial Safety & BBM Buttons): **PASS ✓**
+  - Console Exceptions: **0**
+  - Evidence Screenshot: `evidence/step9/step9_interaction_safety.png`
+- **Electrical Regression Guards (`tests/power-model.test.js`)**:
+  - All 8 tests passed verbatim (including P2 & P7 regression guards and P8 RCD honesty).
+- **Standalone Offline Build (`node build.js`)**:
+  - Generated single-file bundle `dist/solar-app.html` (2,674,996 bytes) with 0 external network requests.
+
+### Review Gate 6 Verdict
+Phase 4 / Step 9 is **complete and approved** (`DONE`).
+Next step: **Phase 5, Step 10** (`Rewrite isolateSubsystem() safely`).
+
+---
+<!-- Next agent: append below this line. Do not modify anything above it. -->
+

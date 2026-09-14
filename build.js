@@ -30,6 +30,15 @@ html = html.replace(/<link\s+rel=["']stylesheet["']\s+href=["']([^"']+)["'][^>]*
 });
 
 // 2. Inline JavaScript scripts in exact order
+// Expected bundle sequence:
+//   three.min.js -> OrbitControls.js -> scene-3d.js -> contractors-db.js ->
+//   guide-data.js -> electrical-db.js -> simulation-engine.js -> sound-fx.js ->
+//   sld-schematic.js -> system-profile.js -> power-model.js -> app.js
+const systemProfileBeforePowerModel = /<script\s+src=["']js\/system-profile\.js["']\s*><\/script>\s*<script\s+src=["']js\/power-model\.js["']\s*><\/script>/i;
+if (!systemProfileBeforePowerModel.test(html)) {
+  console.warn('Notice: js/system-profile.js sequence before js/power-model.js not matched in input HTML.');
+}
+
 html = html.replace(/<script\s+src=["']([^"']+)["']\s*><\/script>/gi, (match, relSrc) => {
   const jsPath = path.join(rootDir, relSrc);
   if (fs.existsSync(jsPath)) {

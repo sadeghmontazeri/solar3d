@@ -174,6 +174,7 @@ class HybridSolar3DScene {
     // Raycaster & Interaction
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2();
+    this._pointerDownPos = null;
     this.hoveredObject = null;
     this.eventListeners = {};
 
@@ -3774,7 +3775,7 @@ class HybridSolar3DScene {
     else if (id === 'eps_mcb' || id === 'qe_mcb' || id === 'sld-qe') targetId = 'eps_mcb';
     else if (id === 'qo_mcb' || id === 'eps_incomer_mcb' || id === 'sld-qo') targetId = 'qo_mcb';
     else if (id === 'qbp_mcb' || id === 'grid_bypass_mcb' || id === 'sld-qbp') targetId = 'qbp_mcb';
-    else if (id === 'eps_rcd' || id === 'sld-rcd') targetId = 'eps_rcd';
+    else if (id === 'eps_rcd' || id === 'sld-rcd' || id === 'crit_rcbo_1') targetId = 'eps_rcd';
 
     const sw = this.switchgear[targetId];
     if (!sw) return;
@@ -4150,16 +4151,24 @@ class HybridSolar3DScene {
   // RAYCASTING & INTERACTION
   // ==========================================
 
-  _setupEventListeners() {
+  _setupEvents() {
+    this._onPointerDown = (event) => {
+      this._pointerDownPos = { x: event.clientX, y: event.clientY };
+    };
     this._onPointerMove = this._onPointerMove.bind(this);
     this._onClick = this._onClick.bind(this);
     this._onDoubleClick = this._onDoubleClick.bind(this);
     this._onResize = this._onResize.bind(this);
 
+    this.renderer.domElement.addEventListener('pointerdown', this._onPointerDown);
     this.renderer.domElement.addEventListener('pointermove', this._onPointerMove);
     this.renderer.domElement.addEventListener('click', this._onClick);
     this.renderer.domElement.addEventListener('dblclick', this._onDoubleClick);
     window.addEventListener('resize', this._onResize);
+  }
+
+  _setupEventListeners() {
+    this._setupEvents();
   }
 
   _onPointerMove(event) {
@@ -4193,21 +4202,13 @@ class HybridSolar3DScene {
   }
 
   _onClick(event) {
+    if (this._pointerDownPos && Math.hypot(event.clientX - this._pointerDownPos.x, event.clientY - this._pointerDownPos.y) > 5) {
+      return;
+    }
     if (!this.options.enableInteraction || !this.hoveredObject) return;
 
     const data = this.hoveredObject.userData;
-    if (data.action === 'toggle') {
-      this.toggleBreaker3D(data.id);
-    } else if (data.action === 'press') {
-      this.toggleBreaker3D(data.id, true);
-    } else if (data.action === 'toggle_dc_door') {
-      this.toggleDCDoor();
-    } else if (data.action === 'toggle_mdb_door') {
-      this.toggleMDBDoor();
-    } else if (data.action === 'toggle_eps_door') {
-      this.toggleEPSDoor();
-    }
-
+    this._emit('objectSelected', data);
     this._emit('objectClick', data);
   }
 
@@ -4381,6 +4382,9 @@ class HybridSolar3DScene {
     if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
 
     if (this.renderer && this.renderer.domElement) {
+      if (this._onPointerDown) {
+        this.renderer.domElement.removeEventListener('pointerdown', this._onPointerDown);
+      }
       this.renderer.domElement.removeEventListener('pointermove', this._onPointerMove);
       this.renderer.domElement.removeEventListener('click', this._onClick);
     }
