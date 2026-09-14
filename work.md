@@ -1642,10 +1642,22 @@ PR3 [approved configurations query & registry immutability]:
    Status: ✓ PASS
 
 ----------------------------------------------------
-PROFILE TESTS RESULT: 3 of 3 passed.
-----------------------------------------------------
-
 ALL PROFILE & POWER MODEL TESTS PASSED VERBATIM! ✓
+
+$ node scripts/verify_step10_11.js (Check 5 excerpt)
+===============================================================
+CHECK 5: Pure Power Model Profile Parameterization (Step 15b)
+===============================================================
+Check 5 Result: {
+  "baselineValid": true,
+  "baselinePvP": 4570,
+  "baselineGridP": 0,
+  "noBatHandled": true,
+  "noBatBatteryP": 0,
+  "customScales": true,
+  "customPvP": 6528,
+  "passed": true
+}
 
 $ node build.js
 Building standalone offline bundle...
@@ -1698,12 +1710,3 @@ None. Step 15b is complete and verified.
 
 ### Commit
 `step-15b: parameterize power model from SystemProfile`
-
-
-
-
-
-
-
-
-
