@@ -8,25 +8,53 @@
 
 ---
 
-## Status — updated 2026-09-14 after Review Gate 7
+## Status — rewritten 2026-09-14 by the plan author, at the owner's request
 
-| Phase | Steps | State |
+**Who may edit this file.** §B lists `PLAN.md` as never-modify *for the implementing agent*.
+It is the reviewer's control document. The implementer edited it in `8e3f087` to mark its own
+work done; `511c8ef` reverted that. This rewrite is by the plan author at the owner's request and
+records **measured** state only. The implementing agent still must not edit it.
+
+**Repository.** Work happens in `C:\Users\11\Desktop\PC\shahrivar\APP-v3.23\APP\APP\17`
+(`HEAD = 44872d6`, 7 commits ahead of `origin/main`, **not pushed**). A second, stale clone of the
+same remote exists at `C:\Users\11\Desktop\PC\shahrivar\solar-app\APP\17` (`HEAD = c50599f`).
+**Do not edit the stale clone.** Working tree today: 8 modified `evidence/*.png` (rewritten by
+re-running the CDP verify scripts), nothing else.
+
+| Phase | Steps | State (measured 2026-09-14) |
 |---|---|---|
 | 0 Evidence & baseline | 0, 1, 1b | ✅ done |
 | 1 Safety net | 2, 3, 3b, 4 | ✅ done — **app is genuinely offline** |
 | 2 Crash fixes | 5, 6 | ✅ done |
 | 3 Power accounting | 7, 7b, 8 | ✅ done — **electrical story is honest** |
-| 4 Interaction safety | 9 | ✅ done |
-| 5 One cabinet | 10, 11 | ✅ done — **MDB inspection & safe isolation proven** |
-| 6 Interface declutter | 12, 13, 14 | ⬅️ **next** |
-| 7 Multiple system families | 15a–15d, families | 🔄 **15a contract & 15b model param done** — see §PHASE 7 |
+| 4 Interaction safety | 9 | ✅ done — Gate 6 never adjudicated |
+| 5 One cabinet | 10, 11 | ✅ done — Gate 7 never adjudicated |
+| 6 Interface declutter | 12, 13, 14 | 🟡 **implemented, not adjudicated** — see `REVIEW.md` |
+| 7 Multiple system families | 15a–15d | 🟡 **implemented, not adjudicated** — 5 profiles registered; three-phase is schema only |
+| A Visual fidelity (IBL, shadows, LEDs) | — | ⚠️ **executed with no plan entry** — in `work.md`, never in this plan |
+| 8 Owner drawing set — intake, viewer, mapping | 16–19 | ⬅️ **next** |
+| 9 Elements reconciled to the drawing set | 20–22 | ⏸ gated on Gate 8 |
+| 10 Conductor identification & polarity | 23–26 | ⏸ gated on Gate 8 |
+| 11 Equipment realism from owner assets | 27–31 | ⏸ gated on owner asset intake (§11.2) |
+
+**Measured today, not claimed:**
+`node tests/power-model.test.js` → 9/9 model + 7/7 profile = **16 pass**.
+`dist/solar-app.html` = **2,806,710 bytes**, SHA-256 `3be95101…3ebc4`, contains Phase A, built 11:57.
 
 **Defects closed:** E2 (grid double-count), E7 (`eps_rcd` inert), V1 (`_animateCamera`),
-V2 (SBY corruption), V6 (inverted flow signs), V10 (SBY stale callback), V11 (null preset).
+V2 (SBY corruption), V6 (inverted flow signs), V10 (SBY stale callback), V11 (null preset),
+V13 (particle speed saturation — fix is genuine, its test is not; `REVIEW.md` §3.3).
 
 **Still open:** E3 efficiency · E4 clipping · E5 string voltage · E6 fault physics ·
-E9 SOC divergence · V5 filters inert · V7 cable termination · V8 hardcoded conductor telemetry ·
-V12 viewpoint highlight (→ Step 14) · **V13, V14 — new, see §PHASE 7**
+E9 SOC divergence · V5 flow filters inert · V7 cable termination · V8 hardcoded conductor
+telemetry · **V12 reopened** (check does not test highlight stealing) · **V14 reopened**
+(certified by a `typeof`, never by a measured disposal count).
+
+**Governance debt carried into Phase 8** — from `REVIEW.md` §7, still open:
+one-step-one-commit rule, real commit hashes in `work.md`, six check repairs (V12, V14, CHECK 3,
+CHECK 4, CHECK 5), and a real Gate 6/7 verdict. **Phase 8 may start in parallel with that repair
+work** because it touches no simulation code, but **Gate 8 will not pass while V12 and V14 are
+still certified by checks that cannot fail** (§8.5).
 
 ---
 
@@ -75,6 +103,30 @@ docs/                    scratch/                 Ideas.md   HISTORY.md   PLAN.m
 
 **Language:** `work.md` may be Persian or English. Code comments follow the file's existing
 style.
+
+### §B amendment — 2026-09-14, plan author
+
+Three clarifications, added when Phases 8–11 were written. Nothing already forbidden becomes
+allowed except where stated.
+
+1. **`docs/` stays read-only, with one carve-out.** Step 16 creates `docs/owner/` and copies the
+   owner's source documents into it. After that step, `docs/owner/**` is itself never-modify: the
+   HTML documents are owner-owned originals, and the derived payload is **regenerated** by
+   `scripts/build-docset.js`, never hand-edited. The same rule covers `assets/img/**` once Step 28
+   creates it.
+
+2. **`PLAN.md` is the reviewer's document.** The implementing agent never edits it — including the
+   status table, including to mark its own step done. `8e3f087` broke this and `511c8ef` reverted
+   it. Only the plan author or reviewer edits this file, and only at the owner's request.
+
+3. **Generated files are never hand-edited.** `js/doc-set-1ph.js`, `js/image-assets.js` and any
+   future generated payload are build outputs that happen to be committed so the bundle stays
+   reproducible offline. Change the generator, re-run it, commit the result.
+
+**One check rule, added after `REVIEW.md`:** every new automated check must be shown to fail on a
+deliberately broken variant, and the failing output pasted into `work.md` beside the passing one.
+Three of the five Phase 6/7 checks asserted things that were structurally always true, and two
+defects were closed on them. A check that cannot fail is not evidence.
 
 ---
 
@@ -1194,6 +1246,867 @@ Equipment and layout come from the profile; the interaction model does not chang
 **Estimate:** do not attach this phase to the earlier 3–4 day figure. Re-estimate after 15a–15d
 are complete and the first new SLD has arrived.
 
+### PHASE 8 — Owner drawing set: intake, offline viewer, tag mapping ⬅️ **next**
+
+> Added 2026-09-14. Owner request, three features:
+> **(1)** change the app's elements to match the supplied single-phase SLD, and embed that drawing
+> set **with its guide** inside the app — single-phase only for now;
+> **(2)** make positive/negative and phase/neutral/earth conductor order and colour follow the
+> international identification rules;
+> **(3)** make the equipment look real — use the supplied product imagery instead of lifeless
+> primitives.
+>
+> Feature 1 is split: **Phase 8** brings the documents in and builds the mapping; **Phase 9**
+> changes the elements. Feature 2 is **Phase 10**. Feature 3 is **Phase 11**. Nothing in Phase 8
+> touches the simulation, the power model, or the existing SLD.
+
+---
+
+#### 8.0 What arrived, and what the documents say about themselves
+
+Two HTML documents, both authored by the owner, both single-phase:
+
+| File | Id / Rev | Size | SHA-256 (first 8) | Sheets / figures |
+|---|---|---|---|---|
+| `SLD_Hybrid_SinglePhase_BaseDrawingSet.html` | `HYB-1PH-SLD-SET` / REV 00 / 2026-09-12 | 191,647 B | `ba1b573c` | 10 sheets `s00`–`s09`, 12 `<svg>` |
+| `HYB-1PH-CFG-001.html` | `HYB-1PH-CFG-001` / REV 00 / 2026-09-13 | 217,410 B | `67a9c1f2` | 10 `<svg>`, 8 configurations HY-1…HY-8 |
+
+**Read the status lines before using either.** They are the documents' own words, not an
+instruction to this project:
+
+- The drawing set carries a banner: «این مدرک جایگزین شده است — SUPERSEDED», superseded by
+  `HYB-1PH-CFG-001`, and is described there as kept only for drafting and symbol history, not as
+  a basis for classification or acceptance.
+- Both documents are **`NOT APPROVED`** — «تأیید نشده — برای اجرا نیست».
+- The drawing set is drawn from a work instruction **`HYB-1PH-FA-REV02`, steps 0–23**, which is
+  **not among the supplied files**. Every sheet cites it. We do not have it.
+- Sheet 08, table 08-1 has an intentionally empty «مقدار» column — it is a decision sheet, not a
+  purchase list. Several devices are marked «مشروط» (conditional): `F11 F12 F21 F22`, `F13 F23`,
+  `K5`, `RCD7`, `Q9`, `SPD-EPS`, `SPD-DAT`. Others are marked ▲ — a required function whose
+  realisation is only proven by the selected product's documentation.
+
+**Consequence for the app.** This is a reference set at REV 00, not an as-built drawing. The
+viewer must reproduce the banners verbatim, and the app must never present these sheets as an
+approved construction drawing. Same rule as §7.6.
+
+`HYB-1PH-CFG-001` is included even though the owner asked only for "the single-phase drawing":
+the drawing set declares itself superseded **by that document**, so shipping one without the other
+would misinform the reader. CFG-001 also classifies installations on two axes — **T** (how the
+island board is fed: T1 internal transfer / T2 external transfer) and **C** (how the battery is
+charged: C1 grid charging allowed / C2 physical separation / C3 supervised blocking) — producing
+the eight configurations HY-1…HY-8. §9.1 uses that to classify the five registered profiles.
+
+**Images supplied, and what they are.** Two files, identical except for the timestamp
+(`ChatGPT Image Sep 8, 2026, 03_31_20/40 PM.png`, SHA `20ab7fc4`) plus one earlier variant
+(`03_18_51 PM.png`, SHA `6c3fa127`). They are **AI-generated system illustrations**, not product
+photographs: generic "BMS" / "Hybrid Inverter" faces, idealised harnesses, no manufacturer or
+model. They are **excellent as the conductor-colour and layout reference for Phase 10** — both
+carry an explicit *CABLE COLOR & TYPE LEGEND* — and they are **not** usable as a texture source,
+nor as evidence that any real product looks like this (§11.2). The orthographic **gPV fuse-holder**
+views discussed in the owner's review are **not present in the intake folder**; Phase 11's pilot
+device cannot start until they arrive.
+
+---
+
+#### 8.1 What the app has today — measured, not assumed
+
+| | measured |
+|---|---|
+| SLD viewer | `js/sld-schematic.js` (159 KB) renders 6 tabs: `SLD-01`, `SLD-02`, `SLD-03`, `DC-01-02`, `E-01`, `C-01`. **On the never-modify list (§B).** |
+| Live telemetry on drawings | gated to one tab — `sld-schematic.js:2206` returns early unless `currentTab === 'SLD-01'` |
+| Modal wiring | `app.js:2218 setupSLDModal()` (tab strip → `SLDSchematic.switchTab`), `app.js:2353 setupGuideModal()` |
+| The "guide" entry | `btn-open-guide` is the **37-chapter HYB-FA-001 Rev B reader**, backed by `guide-data.js` — which also feeds the **exercises** (`app.js:2502`) and the **48-row disputes table** (`app.js:2694`). It is not a drawing guide. |
+| Tools menu | 11 entries, `index.html:69-79` |
+| Fonts | local Vazirmatn only (4 weights, base64 in `css/fonts.css`). No IBM Plex. |
+| Bundler | `build.js` inlines **only** `<link rel=stylesheet>` and `<script src>` from `index.html`, then hard-fails on any `href=` / `src=` / `url(` / `@import` pointing at `http(s)://`, on any protocol-relative URL, and on fewer than 4 inlined `woff2` faces. |
+
+Both supplied documents load **Google Fonts** (`Vazirmatn` + `IBM Plex Mono` + `IBM Plex Sans
+Condensed`). Pasted in as-is, `node build.js` **will throw** on the integrity check. That is the
+gate doing its job, not a problem to route around.
+
+Each document also ships **one `<script>` block** (~169 lines in the drawing set) implementing a
+fullscreen zoom viewer: `position:fixed; inset:0; z-index:9999`, appended to `document.body`, with
+`document.addEventListener('keydown')`, `window.addEventListener('resize')` and `beforeprint`.
+Inlined into `index.html` it would capture the app's keyboard and sit above every modal.
+
+---
+
+#### 8.2 The owner's reviewer (Astra) on this work — adopted, corrected, rejected
+
+| # | Astra's point | Verdict here |
+|---|---|---|
+| 1 | Render the documents inside an isolated `iframe`, not pasted into the page | **Adopted** — and now verified: the fixed `z-index:9999` overlay and the document-level `keydown` handler are the concrete reasons (§8.1) |
+| 2 | Keep the SVG sheets as SVG so zoom stays sharp | **Adopted** |
+| 3 | Strip Google Fonts, embed the project font, bundle at build time, leave no reference to a `Downloads` path | **Adopted** — Step 17 |
+| 4 | Do not auto-wire the old live telemetry or breaker commands to the new symbols; ids and topology differ | **Adopted, and hardened**: the new viewer is **read-only for the whole of Phase 8** |
+| 5 | Do not delete `guide-data.js` | **Adopted** — confirmed: it feeds chapters **and** exercises **and** the disputes table |
+| 6 | Reuse the two existing entries: "single-line drawing" → sheet 01, "single-phase drawing guide" → sheet 00 | **Corrected.** There is no "single-phase drawing guide" entry. `btn-open-guide` is the 37-chapter HYB-FA-001 reader (§8.1); repointing it would delete a working feature. Phase 8 adds **new** entries instead (Step 18). |
+| 7 | A photo alone cannot replace the 3D model; build the body, use the corrected image for surface detail; the supplied gPV views disagree on screw count and carry placeholder dimensions | **Adopted** — it is the backbone of §11.1 and §11.2 |
+| 8 | Order of work: drawing tags → equipment & terminal list → dimensions and rail position → cable route → simulation binding; never map SLD coordinates onto panel coordinates | **Adopted** — it is the Phase 8 → 9 → 10 → 11 order |
+
+---
+
+#### 8.3 Decisions fixed here, so no step has to invent one
+
+1. **Payload form.** The documents become one generated JS file, `js/doc-set-1ph.js`, exposing
+   `window.OWNER_DOCSET_1PH = { drawingSet, configStandard, meta }` as `JSON.stringify`-encoded
+   strings. Reason: `build.js` inlines `<script src>` and nothing else, so a `.js` file is the
+   only form that survives bundling untouched.
+2. **Rendering.** One `<iframe sandbox="allow-scripts">` whose `srcdoc` is assigned from JS. No
+   `allow-same-origin`: the frame gets an opaque origin, its own zoom script still runs, and it
+   cannot reach into the app. Assigning `srcdoc` as a property avoids attribute escaping.
+3. **Generated, not hand-edited.** `scripts/build-docset.js` reads the two source files and
+   applies exactly the transforms listed in Step 17. The originals are archived byte-for-byte
+   under `docs/owner/` and are **never** edited.
+4. **Read-only.** Phase 8 adds no click-to-operate, no telemetry, no breaker binding on the new
+   sheets. Those need the mapping (Step 19) and the owner's sign-off.
+5. **Entry points.** A **new** modal and two new ways in; nothing existing is repointed (§8.2 #6).
+6. **Font substitution is a recorded deviation.** Vazirmatn is available locally; IBM Plex Mono
+   and IBM Plex Sans Condensed are not. They fall back to a local stack. The deviation is written
+   into `docs/owner/README.md` and shown in the viewer's provenance strip, not hidden.
+
+---
+
+#### Step 19 numbering note
+
+Steps 16–19 belong to Phase 8, 20–22 to Phase 9, 23–26 to Phase 10, 27–31 to Phase 11. Phase A
+(visual fidelity, already executed) is recorded in `work.md` but has no step number; do not
+renumber it retroactively.
+
+---
+
+#### Step 16 — Intake and provenance (no app change)
+
+**Do:**
+1. `docs/owner/` — copy both HTML files **unmodified**. Record for each: filename, document id,
+   revision, date, declared status, SHA-256, byte size.
+2. `docs/owner/README.md` — a provenance page containing:
+   - the table above, with the verbatim SUPERSEDED / NOT APPROVED wording for each document;
+   - **missing references**: `HYB-1PH-FA-REV02` (the work instruction all ten sheets cite) and
+     the empty «مقدار» column of table 08-1;
+   - the image intake table: the two AI-generated illustrations, what they are good for
+     (conductor colour reference) and what they are not (product evidence);
+   - an explicit **"not received yet"** list: gPV orthographic views, real product photographs,
+     enclosure dimensions.
+3. `docs/owner/**` is already never-modify under the §B amendment of 2026-09-14 — confirm the
+   copies are byte-identical to the sources, then never touch them again.
+
+**Verify:**
+```bash
+sha256sum docs/owner/*.html
+node -e "const f=require('fs');for(const n of f.readdirSync('docs/owner').filter(x=>x.endsWith('.html')))console.log(n, f.statSync('docs/owner/'+n).size)"
+```
+
+**Acceptance:** the two SHA-256 values equal `ba1b573c…` and `67a9c1f2…` from §8.0. No file in
+`js/`, `css/` or `index.html` changed in this step.
+
+---
+
+#### Step 17 — Offline payload generator
+
+**Do:** write `scripts/build-docset.js`. Input `docs/owner/*.html`, output `js/doc-set-1ph.js`.
+Transforms, and **only** these:
+
+| # | Transform | Why |
+|---|---|---|
+| T1 | Delete the Google Fonts `<link>` element | `build.js` integrity gate (§8.1) |
+| T2 | Insert, at the top of the document's own `<head>`, a `<style>` carrying the project's four base64 Vazirmatn `@font-face` rules taken from `css/fonts.css` | keeps Persian text correct offline |
+| T3 | Append one CSS rule mapping `IBM Plex Mono` to a local monospace stack and `IBM Plex Sans Condensed` to the Vazirmatn stack | those two faces are not licensed into this repo |
+| T4 | Escape any `</script>` inside the emitted JS strings | the payload is inlined into a `<script>` at build time |
+| T5 | Emit `meta` per document: `{ id, rev, date, status, supersededBy?, sha256, sourceBytes, generatedAt, transforms:[…] }` | the viewer shows provenance from data, not from a hardcoded string |
+
+Nothing else: no re-wording, no restyling of sheets, no removal of the SUPERSEDED banner, and no
+removal of the `claude.ai` reference URL that appears **as plain text** inside that banner — it is
+not an `href`, so `build.js`'s regex does not match it. **Confirm that by running the build; do
+not assume it.**
+
+**Verify:**
+```bash
+node scripts/build-docset.js
+grep -c "fonts.googleapis.com" js/doc-set-1ph.js
+grep -c "SUPERSEDED" js/doc-set-1ph.js
+node -e "global.window={};require('./js/doc-set-1ph.js');const d=window.OWNER_DOCSET_1PH;console.log(Object.keys(d));console.log(d.drawingSet.length,d.configStandard.length);console.log(JSON.stringify(d.meta,null,1))"
+node build.js
+```
+
+**Acceptance:** first grep `0`, second grep `>= 1`. The generator is deterministic — run it twice,
+`sha256sum js/doc-set-1ph.js` identical. `node build.js` prints `INTEGRITY CHECK PASSED` with
+**External network requests: 0**. Bundle size recorded. **Budget: `dist/solar-app.html` ≤ 4.0 MB
+after this step** (baseline 2,806,710 B + roughly 0.45 MB of payload).
+
+**If the integrity check fails, stop and paste the failure.** Do not delete document content to
+get past it.
+
+---
+
+#### Step 18 — In-app document viewer
+
+**Do:**
+1. `index.html` — a new modal `#docset-modal` following the existing modal markup, containing:
+   - a **document selector**: «مجموعه نقشه تک‌فاز (HYB-1PH-SLD-SET)» | «استاندارد پیکربندی
+     (HYB-1PH-CFG-001)»;
+   - a **sheet selector** for 00–09 with the real titles — 00 conventions · 01 main SLD ·
+     02 DC protection panel · 03 battery · 04 BMS safety chain · 05 neutral and N-PE ·
+     06 PE network · 07 EPS board · 08 equipment and mode tables · 09 open items;
+   - a **provenance strip** rendered from `meta`: id · rev · date · **NOT APPROVED** ·
+     superseded-by where present · "read-only reference — not wired to the simulation" ·
+     the font-substitution note;
+   - `<iframe id="docset-frame" sandbox="allow-scripts">`.
+2. `index.html` — two entries; no existing entry repointed:
+   - tools menu `btn-open-docset` «📐 مجموعه نقشه و استاندارد پیکربندی تک‌فاز (مالک)» → opens at
+     the drawing set, sheet 00;
+   - SLD modal tab strip `data-tab="OWNER-1PH"` «مجموعه نقشه مالک (تک‌فاز)» → opens the docset
+     modal at sheet 01.
+3. `js/app.js` — `setupDocsetModal()`, called alongside the other setups. Assign `frame.srcdoc`
+   once per document switch. For sheet jumps, prefer the simplest mechanism that works with an
+   opaque origin, and **record in `work.md` which one you used and why** — the document's sheets
+   already carry `id="s00"`…`id="s09"`, and the acceptable options are (a) let the reader scroll
+   from the document's own index, or (b) append a one-line scroll shim to the payload at generate
+   time. Do not add a second copy of the document per sheet.
+4. `js/app.js` — in `setupSLDModal()`, intercept `data-tab="OWNER-1PH"` **before** the
+   `SLDSchematic.switchTab(tabId)` call, so the protected module never receives an unknown tab id.
+5. `css/styles.css` — modal sizing; the frame fills the body; `border:0`.
+
+**Never in this step:** `js/sld-schematic.js`, `js/guide-data.js`, `js/electrical-db.js`, the power
+model, the 3D scene.
+
+**Verify:** `scripts/verify_step18.js`, same headless-Chrome CDP harness as
+`scripts/verify_phase6_7.js`, run against **`dist/solar-app.html` from `file://`** — the bundle is
+what ships, so the bundle is what gets tested.
+
+| Check | Assertion |
+|---|---|
+| 18-1 | `#docset-modal` opens from the tools entry and from the SLD tab |
+| 18-2 | `docsetFrame.contentDocument === null` — opaque origin, proving the sandbox |
+| 18-3 | For each of the 10 sheets: switch, screenshot, assert rendered height > 0 and at least one `<svg>` painted |
+| 18-4 | Persian text renders in Vazirmatn, not a fallback — sample a glyph run and assert the measured width |
+| 18-5 | `performance.getEntriesByType('resource').filter(r => /^https?:/.test(r.name)).length === 0` |
+| 18-6 | With the viewer open, `Escape` still closes the app modal, and the frame's zoom keys do not reach the app |
+| 18-7 | The 11 pre-existing tools entries all still open their modals |
+
+**Report integrity — this is now a rule, not advice (`REVIEW.md` §3).** Every check above must be
+shown to **fail** on a deliberately broken variant, and that failing output pasted into `work.md`
+beside the passing output. A check that cannot fail is not evidence. Three of the five Phase 6/7
+checks were of that kind, and two defects were closed on them.
+
+**Evidence:** `evidence/phase8/step18_sheet00.png` … `step18_sheet09.png`, plus
+`step18_config_standard.png`.
+
+**Acceptance:** 10 sheets and the configuration standard readable from the bundle, opened from a
+folder other than the repo, network disabled; zero external requests; the 11 existing tools
+entries unaffected; `node tests/power-model.test.js` still 16/16.
+
+---
+
+#### Step 19 — Drawing tag ↔ internal id mapping table
+
+The deliverable that unlocks Phases 9, 10 and 11. Paper plus data — **no behaviour change**.
+
+**Do:**
+1. `docs/owner/mapping-1ph.md` — one row per drawing tag from table 08-1:
+   **drawing tag · function as written in 08-1 · conditional? · internal breaker/state id ·
+   `system-profile` path · 3D object · status · note**.
+   Status ∈ `matched` · `renamed` · `collapsed` (several drawing devices → one app object) ·
+   `missing` (in the drawing, absent from the app) · `extra` (in the app, no tag in the drawing) ·
+   `out-of-scope` (the drawing itself defers it).
+2. `js/system-profile.js` — add to the canonical single-phase hybrid profile **only**:
+   `sldMapping.ownerDrawingSet = { docId:'HYB-1PH-SLD-SET', rev:'00', status:'NOT_APPROVED',
+   supersededBy:'HYB-1PH-CFG-001', tags:{ … } }`. Data only; **nothing reads it yet** — the 15a
+   pattern.
+3. Extend `tests/power-model.test.js`: every `tags` entry has a status from the enum, and every
+   `matched` / `renamed` / `collapsed` entry names an id that exists in the profile.
+
+**Draft to start from** — the plan author's reading of table 08-1 against the code, produced by
+grepping the sources on 2026-09-14. It is a **draft for the owner to correct**, not a conclusion:
+
+| Drawing tag | Function (08-1) | Internal id | 3D | Status |
+|---|---|---|---|---|
+| `PV1` `PV2` | one string per MPPT | `pvArray.strings[0..1]` | `_buildRoofAndPVArray` | matched |
+| `F11 F12 F21 F22` | gPV string fuses — **conditional** | `FPV1_POS/NEG`, `FPV2_POS/NEG` | 4 holders in the DC box | matched — **but the app shows them unconditionally; the drawing requires a justification decision** |
+| `Q11` `Q21` | DC load-break isolators | `dc_iso_1`, `dc_iso_2` (aliases `dc_isolator`, `qpv_isolator`) | 2 rotary isolators | renamed — app calls them `QPV1/QPV2` |
+| `SPD11` `SPD21` | DC surge arresters | `DC_SPD_1`, `DC_SPD_2` | 2 SPDs | matched |
+| `F13` `F23` | SPD backup fuses — conditional | — | — | **missing** — the app's `fspd_mcb` is AC-side and already labelled illustrative (Step 8) |
+| `XT1` `XT2` | DC panel in/out terminals | `dc_terminal_block` | one block | collapsed (2 → 1) |
+| `INV1` | single-phase hybrid inverter | `inverter` | `_buildHybridInverter` | matched |
+| `MPPT1` `MPPT2` ▲ | independent inputs and current limits | `inverter.ports.pv1Input/pv2Input` | internal modules | matched |
+| `RCMU` ▲ | residual monitoring inside the converter | — | — | missing — 08-3 warns it is **not** a substitute for a final-circuit RCD |
+| `SDFI` ▲ | isolation from the grid for island operation | — | — | missing — affects sheet 05's neutral story |
+| `SRCSD` ▲ | system reference conductor switching | — | — | missing — interlocked with SDFI |
+| `BT1` `BT2` | battery packs | `batteryStorage` | 5 modules drawn | shape differs (5 drawn vs 2 tagged) |
+| `BMS1` | monitor, limit, safety trip | `bms` mesh | present | partial — **geometry only, no behaviour** |
+| `F5` | main battery OCPD | `battery_ocpd` | — | **collapsed** — `scene-3d.js:4193` maps `battery_ocpd` *and* `battery_qb` onto one object, `bat_breaker` |
+| `Q5` | lockable battery isolator, LOTO point | `battery_qb` | — | **collapsed** — same object as `F5` |
+| `K5` `K5P` `R5` `F5P` | main DC contactor and precharge — conditional | — | — | missing |
+| `F5C` | control supply protection | — | — | missing |
+| `Q0` / `MTR` | service switch and metering | `q0_mcb`, `smart_meter` | MDB + meter | matched |
+| `Q7` | GRID feeder protection | `grid_mcb` / `grid_incomer_mcb` | MDB | renamed |
+| `RCD7` | GRID feeder RCD — conditional | — | — | missing |
+| `F-SPD` / `SPD-AC` | AC arrester and its backup | `ac_spd`, `spd_backup_mcb` | MDB | matched |
+| `SPD-EPS` | EPS-side arrester — conditional | — | — | missing |
+| `SPD-DAT` | data-line arrester — conditional | — | — | missing |
+| `Q8` | EPS output protection and isolation | `eps_mcb` / `eps_incomer_mcb` | EPS board | renamed |
+| `Q9` | bypass — conditional, interlocked with `Q8` | `sby_switch` (I-0-II) + `qbp_mcb` | SBY changeover | **shape differs** — drawing: bypass switch with interlock; app: 3-position manual changeover |
+| `Q81 … Q8n` | EPS final-circuit RCBOs | `crit_rcbo_1`, `eps_rcd`, `qe_mcb`, `qo_mcb` | EPS board | partial |
+| `EPSB` | EPS distribution board | `epsDistributionBoard` | `_buildEPSDistributionBoard` | matched |
+| `MET` / `PE` | main earth terminal and PE network | `met_busbar`, `pe_bar_mdb`, `pe_bar_eps`, `dc_pe_bar` | present | matched |
+| `WD-PV` `WD-BAT` `WD-GRID` `CN-PV` | cables and string connectors | `circuits[*].conductorSpec` | 10 tubes | partial → Phase 10 |
+| `ES1` | emergency stop | — | — | out-of-scope — the drawing itself defers it (sheet 09) |
+| — | non-critical loads MCB | `qn_mcb` | MDB | **extra** — no counterpart in 08-1 |
+
+**Verify:**
+```bash
+node tests/power-model.test.js
+node -e "global.window={};require('./js/system-profile.js');const p=window.SystemProfileRegistry.get('profile-hyb-1p-5kw-v1');const t=p.sldMapping.ownerDrawingSet.tags;const c={};for(const k in t)c[t[k].status]=(c[t[k].status]||0)+1;console.log(c)"
+```
+
+**Acceptance:** the status counts are printed and pasted; every `missing` row carries a one-line
+note on what the app would have to gain; every `conditional` row says what evidence table 08-1
+demands. The table then goes to the owner.
+
+---
+
+#### 8.4 What Phase 8 deliberately does not do
+
+- It does not change one line of the power model, the 3D scene, or `sld-schematic.js`.
+- It does not make the new sheets clickable or live.
+- It does not claim the app matches the drawing. Step 19's output is the honest gap list.
+- It does not import the three-phase story. Single-phase only, as asked.
+
+#### 8.5 Risks
+
+| # | Risk | Mitigation |
+|---|---|---|
+| 8a | 0.45 MB of documents slows first paint | Measure `DOMContentLoaded` before and after in Step 18; the payload stays an inert string until the modal opens |
+| 8b | The sandboxed frame's zoom script fights the app's keyboard | Check 18-6; the opaque origin means it cannot reach the app document |
+| 8c | A NOT-APPROVED REV 00 drawing read as authoritative | Provenance strip rendered from `meta`, not typed; every 18-3 screenshot includes it |
+| 8d | Mapping guessed rather than agreed | Step 19's output goes to the owner; Gate 8 does not pass on the implementer's reading alone |
+| 8e | Two clones of the repo — work lands in the stale one | The status header names the live path; the first Verify line of every step prints `git rev-parse HEAD` |
+
+---
+
+### 🔍 REVIEW GATE 8 — documents in, mapping agreed. Stop here.
+
+Passes only when **all** hold:
+
+1. Steps 16–19 each have their own commit and their own `work.md` entry with a **real hash**.
+2. `dist/solar-app.html` opens from another folder with the network disabled; 10 sheets and the
+   configuration standard readable; zero external requests; ≤ 4.0 MB.
+3. Every Step 18 check has a recorded failing run on a deliberately broken variant.
+4. `REVIEW.md` §7 items 1–6 are done, and **V12 and V14 are re-verified by checks that can fail.**
+5. The owner has returned `docs/owner/mapping-1ph.md` with corrections, and every `conditional`
+   row carries the owner's decision: present · absent · justified later.
+
+**Phases 9, 10 and 11 do not start before this gate.**
+
+---
+
+### PHASE 9 — Elements reconciled to the drawing set ⏸ gated on Gate 8
+
+> Feature 1, second half: *"change the elements to match the sent SLD."* This phase spends the
+> mapping table. It changes what exists in the model and in the scene, so **every row it acts on
+> must carry the owner's decision from Gate 8.** §B still holds: topology, protection ratings and
+> earth/neutral bonding are the owner's calls, not the implementer's.
+
+---
+
+#### 9.1 Classify the five registered profiles against CFG-001
+
+CFG-001 classifies an installation by observation on two axes (§8.0) into HY-1…HY-8. The registry
+currently holds five profiles — `profile-hyb-1p-5kw-v1`, `profile-ong-1p-5kw-v1`,
+`profile-hyb-1p-10kw-v1`, `profile-off-1p-5kw-v1`, `profile-hyb-3p-15kw-v1` — none of which carries
+a configuration class.
+
+The canonical 5 kW hybrid looks like **T2** (an external I-0-II changeover selects between grid and
+inverter output) with grid charging permitted, which would be **HY-3**. *Looks like* is not a
+classification: CFG-001 says T and C are determined by evidence, not by intent. So the work is:
+record a **proposed** class per profile with the evidence line that supports it, and let the owner
+confirm. A profile whose class the owner has not confirmed shows «کلاس پیکربندی: تأییدنشده» in the
+UI rather than a class it has not earned.
+
+The three-phase profile is out of scope here — CFG-001 is single-phase.
+
+---
+
+#### Step 20 — Profile-side reconciliation (data only, no behaviour change)
+
+**Do:** for the single-phase hybrid profile only:
+
+1. Every equipment entry gains `ownerTag` (the drawing identifier), `presence` ∈
+   `required` · `conditional` · `absent`, and `evidence` — the sheet or table row the decision
+   came from. `conditional` carries the criterion that table 08-1 names.
+2. **Split the two collapsed devices.** `F5` (battery OCPD) and `Q5` (lockable isolator, the LOTO
+   point) are separate devices in the drawing and separate states in `app.js`
+   (`battery_ocpd`, `battery_qb`) but one 3D object today. Give each its own equipment entry now;
+   the geometry follows in Step 21.
+3. Rows the owner marked **present** and the app lacks get an entry with `presence:'required'` and
+   `modelled:false` — visible in the mapping report as work outstanding, never silently dropped.
+4. Rows the owner marked **absent** are recorded as `absent` **with the owner's reason**, so the
+   next reader does not re-open a settled question.
+5. Add `configurationClass: { proposed:'HY-n', confirmed:false, evidence:'…' }` per §9.1.
+
+**Never in this step:** the power model's arithmetic. A device that is data-only must not start
+changing a number. `presence:'absent'` must make a branch **vanish**, not compute zero — the
+15b rule.
+
+**Verify:**
+```bash
+node tests/power-model.test.js
+node -e "global.window={};require('./js/system-profile.js');const p=window.SystemProfileRegistry.get('profile-hyb-1p-5kw-v1');let n=0,m=0;JSON.stringify(p,(k,v)=>{if(k==='ownerTag')n++;if(k==='modelled'&&v===false)m++;return v});console.log({ownerTag:n, notModelled:m, cls:p.configurationClass})"
+```
+
+**Acceptance:** 16/16 tests still pass, unchanged. The energy audit is byte-identical to before the
+step — this step must not move a single watt.
+
+---
+
+#### Step 21 — 3D: add, split and mark devices — one device family per commit
+
+**Do**, in this order, each as its own commit, each independently revertible:
+
+| # | Change | Note |
+|---|---|---|
+| 21a | Split `bat_breaker` into two selectable objects: `F5` battery OCPD and `Q5` lockable isolator | `scene-3d.js:4193` currently aliases both ids to one mesh; the alias stays working until the split lands, then is removed |
+| 21b | Devices the owner confirmed **present** and the app lacks — geometry, DIN-rail position, selectable `userData` | only rows carrying an owner decision |
+| 21c | **Conditional** devices get a visible conditional marker in the inspector, not a silent one | e.g. string fuses `F11 F12 F21 F22`: the drawing requires a reverse-current justification before they are mandatory |
+| 21d | Devices the owner marked **absent** are removed from the scene, not hidden behind opacity | §7.8: equipment absent from the profile must be removed, not left showing assumed values |
+
+**Camera, selection and isolation must keep working** after each commit: `focusSubsystem`,
+`isolateSubsystem`, the drawer's action button and the >20 px drag suppression (Step 9) are
+regression surface here.
+
+**Verify** per commit, via the CDP harness:
+
+| Check | Assertion |
+|---|---|
+| 21-1 | Every new object is selectable and its drawer shows the drawing tag |
+| 21-2 | Clicking a new object **selects only** — it does not operate switchgear (Step 9's invariant) |
+| 21-3 | `isolateSubsystem` then reset restores every original material — compare material uuid sets before and after |
+| 21-4 | Object, geometry and material counts before/after are printed, with the expected delta for that commit |
+| 21-5 | 20 profile switches: renderer, listener, timer and disposal counts do not grow — the V14 test that was never really run |
+
+Each check demonstrated to fail on a broken variant, as in Step 18.
+
+**Acceptance:** the scene matches the owner-confirmed rows of `mapping-1ph.md`, one commit per
+family, and no row moves from `missing` to `matched` without geometry **and** an owner decision.
+
+---
+
+#### Step 22 — Drawing tags become the primary label
+
+**Do:** floating labels, the inspector drawer and the "why is this off / where is this fed from"
+one-liner show **`ownerTag` first**, the internal name second, and cite the sheet the device comes
+from (for example `Q5 · جداساز قابل قفل باتری · شیت 03`). Source of truth is the profile, not a
+string typed into the scene.
+
+**Known and accepted inconsistency:** `js/sld-schematic.js` keeps its own tag vocabulary
+(`q0_mcb`, `qg_mcb`, `qn_mcb`, …) because it is on the never-modify list. After this step the 3D
+scene speaks the owner's tags and the built-in SLD-01 still speaks the app's. Record it in
+`work.md` and in `docs/owner/mapping-1ph.md`; resolving it needs either the owner's permission to
+edit the protected file or a replacement drawing. **Do not resolve it by guessing.**
+
+**Verify:** screenshot each renamed device's drawer; assert the label text equals
+`profile.equipment[x].ownerTag` read from the page, not a literal in the test.
+
+---
+
+### 🔍 REVIEW GATE 9 — the scene tells the same story as the drawing. Stop here.
+
+1. Each of 21a–21d is its own commit with its own evidence.
+2. `mapping-1ph.md` regenerated: no row left `missing` without an owner decision recorded.
+3. 16/16 model tests; energy audit unchanged; Step 9, 10 and 11 invariants all re-verified.
+4. The SLD-01 / 3D tag divergence is written down, not quietly tolerated.
+
+---
+
+### PHASE 10 — Conductor identification and polarity ⏸ gated on Gate 8
+
+> Feature 2: *"the order and identification of positive and negative cables must follow the
+> international colour rules."* This is the phase where the picture starts telling the truth about
+> wiring.
+
+---
+
+#### 10.0 Measured defects — grepped 2026-09-14, not inferred
+
+| # | Finding | Evidence |
+|---|---|---|
+| C1 | **The project contains two contradictory DC conventions.** The battery rack draws its terminals red `0xef4444` / near-black `0x18181b` — correct. The DC combiner box draws every negative conductor **blue** `0x2563eb` — `scene-3d.js:1515`, used by **8** conductors | `wireBlueMat` at `scene-3d.js:1515`; battery terminals at `_buildBatteryEnergyStorage` |
+| C2 | **Blue is used simultaneously for DC negative and for AC neutral.** The MDB's neutral feeder is `0x2563eb` — the same value as the DC-box negative | `W_GRD_N1`, `scene-3d.js:2622` |
+| C3 | **The ten inter-enclosure runs are not conductors at all.** Each circuit is **one** tube with a decorative colour: PV amber `0xd97706`, battery **emerald green** `0x059669`, inverter-to-grid **blue** `0x2563eb`, EPS purple, bypass gold | `_buildCablingAndConduits`, `scene-3d.js:3673-3830` |
+| C4 | **Battery green collides with earth green.** Battery run `0x059669` vs earthing run `0x65a30d` — the one colour that must never be ambiguous | same block |
+| C5 | **No + / − pair exists outside the enclosures.** A DC circuit is drawn as a single line, so there is no ordering to be right or wrong about | same block |
+| C6 | **PE is bi-colour in one place and plain green in another.** `_createDressedConductor(..., isPE=true)` applies `peWireTexture`; the DC box uses flat `0x16a34a` for its 3 PE runs | `scene-3d.js:526`, `2133-2150`, `1516` |
+| C7 | **The legend documents state, not identity.** The «راهنمای رنگ و وضعیت هادی‌ها» modal explains energised / no-flow / isolated / tripped / PE. It says nothing about which colour identifies which conductor — and the colours it does show are not the ones on screen | `index.html:1008-1065` |
+| C8 | **Colour is scattered.** 17 occurrences of `0x2563eb`, 17 of `0x16a34a`, 11 of `0xdc2626` across `scene-3d.js` with no shared table | `grep -oE "0x[0-9a-f]{6}"` |
+| C9 | **Tone mapping desaturates whatever we choose.** ACES Filmic at exposure 1.1 with an unbounded `RoomEnvironment` IBL — no material sets `envMapIntensity` — renders the brown phase conductor as cream and the blue neutral as pale grey-blue in `evidence/phase_a/phase_a_mdb.png` | `scene-3d.js:374-391` |
+
+C9 matters more than it looks: **fixing the palette without fixing the render makes no visible
+difference.** Phase 11's Step 27 is therefore a prerequisite for Phase 10 being *visibly* correct,
+and the two phases may run in either order, but Step 26's colour check must run after Step 27.
+
+---
+
+#### 10.1 The conflict this phase must resolve, not paper over
+
+Identification colour and circuit colour want opposite things.
+
+- **Identification colour** is the real one: every AC line conductor is brown, every neutral blue,
+  every earth green-yellow. It is what an electrician sees in the cabinet — and it makes the grid
+  feeder, the inverter feeder, the bypass and the EPS feeder **all look identical**.
+- **Circuit colour** is what the app does today: one colour per circuit, so the eye can follow
+  "battery → inverter" across the room. It is didactic, and it is not what the cable looks like.
+
+The bottom flow-filter bar (`index.html:549-572`) and the particle system both depend on circuit
+colour today.
+
+**Decision: keep both, and never mix them in one surface.**
+
+| | Insulation / sheath colour | Circuit identity |
+|---|---|---|
+| Carried by | the conductor tube material — identification colour, always | the **particles** flowing inside the run, the selection highlight, and the label |
+| Default | identification | — |
+| Toggle | «نمای واقعی سیم‌کشی» ⇄ «نمای آموزشی مسیرها» — one control, remembered per session | the toggle changes the **tube**, never the particle |
+
+That keeps the default picture honest, keeps the teaching value, and gives the flow filter a
+meaning it can keep: it filters by circuit, and the particle colour is what the legend explains.
+
+**Owner decision required before Step 23 (D3 in §H).** The owner's own legend image
+identifies DC as **red positive / black negative**, which is common PV practice. IEC 60445
+tabulates DC conductor identification differently. The app must not silently pick one: the owner
+chooses the convention, and the legend names which convention is on screen and why.
+
+---
+
+#### Step 23 — `js/conductor-code.js`: one table, read by nothing yet
+
+**Do:** a new file, loaded before `scene-3d.js`, exposing `window.CONDUCTOR_CODE`. One entry per
+conductor role: `id`, `role`, `labelFa`, `labelEn`, `hex`, `texture` (`null` or `'pe-stripe'`),
+`material` (`roughness`, `metalness`, `envMapIntensity`), `convention` (which document the colour
+comes from), and `appliesTo` (`dc` / `ac` / `control` / `data` / `sensor` / `earth`).
+
+Roles to cover, taken from the owner's legend image and the drawing set's terminal lists:
+DC positive · DC negative · AC line · AC neutral · PE / earth · control wiring · CAN
+communication · RS485 communication · sensor wiring.
+
+**Nothing reads this file in Step 23.** Same discipline as 15a: the contract lands first and is
+reviewable on its own.
+
+**Verify:**
+```bash
+node -e "global.window={};require('./js/conductor-code.js');const c=window.CONDUCTOR_CODE;console.log(Object.keys(c).length);for(const k in c)console.log(k,c[k].hex,c[k].convention)"
+node build.js
+```
+
+**Acceptance:** every entry names its `convention` source. No hex appears in two roles unless the
+owner's chosen convention genuinely reuses it — and if it does, that is called out in the file.
+
+---
+
+#### Step 24 — Correct the wrong colours in place
+
+**Do:** replace the scattered literals with lookups from `CONDUCTOR_CODE`, fixing C1, C2, C4 and
+C6 as a consequence. No geometry changes, no new tubes — this step is only about what colour and
+material each existing conductor gets:
+
+- the 8 DC-box negatives stop being AC-neutral blue;
+- the 3 DC-box PE runs get the bi-colour stripe the MDB already uses;
+- the battery inter-enclosure run stops being green;
+- the inverter-to-grid run stops being neutral blue.
+
+**Verify:**
+
+| Check | Assertion |
+|---|---|
+| 24-1 | `grep -cE "0x(2563eb\|16a34a\|dc2626)" js/scene-3d.js` drops by the exact number of conductors converted, and the remaining occurrences are non-conductor uses, listed by line |
+| 24-2 | Traverse the scene: every mesh with `userData.type === 'INTERNAL_CONDUCTOR'` or a cable tube has a material colour present in `CONDUCTOR_CODE` — assert **zero** unknown colours |
+| 24-3 | Rendered-pixel check: screenshot the open DC box and the open MDB, sample the centre pixel of a named conductor, and record the RGB actually rendered next to the specification. This is the check that catches C9 |
+| 24-4 | 16/16 model tests unchanged |
+
+24-2 is the check that can fail loudly and is worth writing carefully: it is a whole-scene
+invariant, not a spot assertion.
+
+---
+
+#### Step 25 — Split the runs into conductor sets, with the ordering right
+
+**Do:** each inter-enclosure circuit becomes a **conductor set** instead of one tube:
+
+| Circuit | Conductors |
+|---|---|
+| `pv1`, `pv2` | + and − |
+| `battery` | + and − |
+| `grid_in`, `inv_grid`, `grid_bypass`, `load_non_critical` | L, N, PE |
+| `inv_eps`, `load_critical` | L, N, PE |
+| `earthing` | PE only |
+
+**The ordering is the point of this step, so it is specified, not left to taste:**
+
+1. Order is defined **once per enclosure face** in the profile — the sequence of conductors at that
+   gland or terminal row, left to right as seen from the front — and the geometry is generated from
+   it. No conductor position is a hand-typed `Vector3` any more.
+2. **Polarity order matches the terminal order of the device it lands on**, taken from the
+   drawing's terminal list — not from whichever looks tidier.
+3. The two conductors of a DC pair stay **parallel and adjacent** along the whole run. A + and a −
+   that separate and rejoin is a wiring error drawn as if it were normal.
+4. PE runs with its circuit, and is the outermost conductor of the set.
+5. Bend radius, spacing and tray order stay constant along a run — no crossings inside a tray.
+
+**Particles: one system per circuit, not per conductor.** The flow rides the designated reference
+conductor (the positive of a DC pair, the line of an AC set). Doubling to 20+ particle systems buys
+nothing and costs draw calls.
+
+**Verify:**
+
+| Check | Assertion |
+|---|---|
+| 25-1 | Conductor count per circuit equals the profile's declared set; a mismatch fails |
+| 25-2 | For each DC pair, sample 20 points along both curves: the distance between them stays within the declared spacing ±10 % |
+| 25-3 | `renderer.info.render.calls`, geometry count and material count printed before and after, with the predicted delta stated **before** the run |
+| 25-4 | Particle systems: one per circuit, count unchanged from before the split |
+| 25-5 | Frame time over 300 frames, before and after — record both, not a verdict |
+
+**Acceptance:** DC circuits show a correct, adjacent, correctly ordered pair everywhere; AC circuits
+show L/N/PE; draw-call growth is stated and justified; no frame-time regression beyond a recorded
+budget.
+
+---
+
+#### Step 26 — Legend, labels and the flow filter
+
+**Do:**
+
+1. Extend the «راهنمای رنگ و وضعیت هادی‌ها» modal with a second section: **identification
+   colours**, generated from `CONDUCTOR_CODE` so it cannot drift from the scene, with the
+   convention named (D3) and the state-colour section clearly separated from it.
+2. Hovering or selecting a conductor shows role, circuit, the drawing's conductor tag
+   (`WD-PV`, `WD-BAT`, `WD-GRID`) and its `conductorSpec` from the profile.
+3. Re-base the bottom flow-filter bar on **particle** colour, since tubes no longer carry circuit
+   identity. While that bar is being touched, check whether **V5 (filters inert)** is still true
+   and report it — do not fix it inside this step unless the owner adds it to scope.
+
+**Verify:** the legend's rendered swatches equal `CONDUCTOR_CODE` values read from the page; each
+filter button's dot equals its circuit's particle colour; one screenshot per filter state.
+
+---
+
+### 🔍 REVIEW GATE 10 — the wiring is identifiable. Stop here.
+
+1. Zero conductor materials outside `CONDUCTOR_CODE` (check 24-2).
+2. Rendered pixel colours recorded next to specification (check 24-3), after Step 27's render fix.
+3. DC pairs adjacent and correctly ordered at every gland and terminal (check 25-2).
+4. Draw calls and frame time recorded before/after, with the predicted delta stated in advance.
+5. The legend is generated from the table, and names the convention the owner chose.
+
+---
+
+### PHASE 11 — Equipment realism from owner assets ⏸ gated on asset intake
+
+> Feature 3: *"change the look of the elements using the supplied images — I want the project to
+> look really real, and to use transparent 3D images instead of a lifeless 3D element."*
+> The goal is right. The route needs one correction, and one prerequisite nobody has noticed.
+
+---
+
+#### 11.0 Why the scene looks flat — measured, and it is not the geometry
+
+Look at `evidence/phase_a/phase_a_overview.png` and `phase_a_mdb.png`, taken after Phase A. The
+cabinets are pale, the MCBs are featureless white blocks, the brown phase conductor renders cream
+and the blue neutral renders pale grey. Four measured causes, in order of how much they cost:
+
+| # | Cause | Evidence |
+|---|---|---|
+| R1 | **ACES Filmic tone mapping at exposure 1.1 over a bright procedural `RoomEnvironment`, with `envMapIntensity` never set on any material** — so the IBL dominates every albedo and desaturates it | `scene-3d.js:374-391`; `grep -c envMapIntensity js/scene-3d.js` → 0 |
+| R2 | **No surface markings anywhere.** Every device face is a flat colour. Real switchgear is covered in printed text, rating windows, terminal numbers, toggle graphics, screw heads | no texture is applied to any device face; all 12 `CanvasTexture`s are displays, PE stripes, hazard tape, powder-coat bump and particle sprites |
+| R3 | **No contact darkening between parts.** Phase A added a contact-shadow plane under enclosures, but part-to-part crevices (a breaker on a rail, a terminal in a block) read as if lit from inside | `_addContactShadow` is per-enclosure only |
+| R4 | **Uniform material response.** Painted steel, moulded plastic, brass, tinned copper and polycarbonate all sit in a narrow roughness band, so nothing reads as a different substance | material params across `scene-3d.js` |
+
+**R1 is the prerequisite.** Adding photographic textures under the current render just produces
+washed-out photographs. Step 27 comes before any texture work, and Phase 10's colour check
+(24-3) should run after it.
+
+---
+
+#### 11.1 What a photograph can and cannot replace
+
+The user orbits this scene. A flat image has one correct viewing angle; everything else is wrong
+in a way the eye catches instantly — it shears, it has no thickness, its baked shadow points the
+wrong way when the scene's light moves, and it cannot be opened, isolated or inspected. The owner's
+reviewer reached the same conclusion from the gPV images, and named the concrete symptoms: baked
+shadows and reflections that fight the scene's lighting, front and top views that disagree on screw
+count, and placeholder manufacturer and dimensions.
+
+So: **not "photo instead of model" — photo *into* the model.** Three tiers, and the plan says which
+belongs where:
+
+| Tier | Technique | Where it is right | Where it is wrong |
+|---|---|---|---|
+| **T1 — default** | real geometry at datasheet dimensions + a **de-lit** front-face texture (albedo only, shadows and highlights removed) + separate parts for carrier, lens, screws, terminals | every device the user can select, open, isolate or orbit | — |
+| **T2 — background only** | alpha-cutout billboard that faces the camera | far-field props never approached: the utility pole, distant load blocks | anything selectable, anything inside a cabinet, anything the camera passes |
+| **T3 — the inspector** | the real product photograph, full size, beside the 3D model in the drawer, with manufacturer, model and datasheet reference | **this is where a transparent product image genuinely belongs** — it gives the "really real" the owner wants, without the model claiming to be something it is not | — |
+
+T3 is cheap, high-value and honest, and it can ship before T1 for any device whose photo exists.
+
+**The label rule from §7.6 still applies**: until dimensions and internal arrangement are proven by
+the product's own documentation, the object is labelled «مدل نمایشی — ابعاد تأییدنشده», whatever it
+looks like.
+
+---
+
+#### 11.2 Asset intake — what the owner needs to supply per device
+
+The two images received so far are **AI-generated system illustrations** (§8.0). They are the right
+reference for Phase 10's colours and for cabinet layout. They are **not** a texture source and not
+evidence of any real product — using them as one would be exactly the false claim §7.6 forbids. The
+gPV orthographic views are not in the intake folder at all.
+
+Per device, a usable asset set is:
+
+1. **Identity** — manufacturer, model, and the datasheet page the dimensions come from.
+2. **Dimensions** — W × H × D in mm, plus module width for DIN devices.
+3. **Straight-on front view**, even diffuse lighting, no cast shadow, no specular blowout,
+   background removed, ≥ 1024 px on the long edge, square pixels, no perspective keystone.
+4. **Side and top** views if the device is not a simple extrusion — and the views **must agree**
+   with each other. The gPV set does not: one screw in the front view, two in the top and bottom.
+5. **A scale reference** in at least one frame, or the dimensions in (2) confirmed.
+6. **Licence / permission** to embed the image in a distributed file.
+
+Anything missing ⇒ the device stays a representative model and says so. Nothing is blocked by
+this; the app simply does not claim more than it has.
+
+---
+
+#### Step 27 — Render fidelity baseline (no textures yet)
+
+**Do:** make the renderer show a colour that is actually the colour.
+
+1. Set `envMapIntensity` explicitly per material class — painted enclosure, moulded plastic,
+   polished metal, cable sheath, glass/lens — instead of letting all of them default to 1.
+2. Retune `toneMappingExposure` against a measured target rather than by eye.
+3. Widen the roughness / metalness spread between the five material classes (R4).
+4. Add part-level contact darkening where devices meet rails and terminals meet blocks (R3),
+   reusing the existing contact-shadow texture; no new library.
+
+**Verify — the measurement makes this step reviewable:** place a small off-screen calibration strip
+of known albedo patches (the `CONDUCTOR_CODE` colours plus 18 % grey), render, read back the pixels,
+and record **specified vs rendered RGB** per patch, before and after.
+
+| Check | Assertion |
+|---|---|
+| 27-1 | Mean ΔRGB between specified and rendered, per patch, before and after — the after value is smaller, and both are recorded |
+| 27-2 | Saturation of the brown phase conductor and the blue neutral, before and after, sampled from the same pixel |
+| 27-3 | Frame time over 300 frames before and after |
+| 27-4 | Four Phase A screenshots retaken from the identical camera for side-by-side comparison |
+
+**Acceptance:** the numbers are in `work.md`. "Looks better" is not an acceptance criterion.
+
+---
+
+#### Step 28 — Image asset pipeline, and the build hole it closes
+
+**There is a hole in `build.js` today.** It inlines CSS and JS, and it fails on `http(s)://` URLs —
+but an `<img src="assets/img/x.png">` or a CSS `url(assets/img/x.png)` would pass every existing
+check and silently break the single-file promise: the bundle would render without the image on any
+machine that does not also have the folder. Close it in this step, before the first image exists.
+
+**Do:**
+1. `assets/img/` — source images, one folder per device, plus a `source.json` per device carrying
+   the §11.2 identity fields.
+2. `scripts/build-images.js` → `js/image-assets.js`, exposing `window.IMAGE_ASSETS` as
+   `{ id: { dataUri, w, h, bytes, sha256, source } }`. Deterministic; re-running produces an
+   identical file.
+3. `build.js` — add an integrity check that **fails** on any `src=` / `url(` / `href=` in the
+   output pointing at a relative path that is not a `data:` URI. Prove it fails by running it once
+   against a deliberately broken input and pasting the failure.
+4. `scene-3d.js` — one loader helper: `THREE.TextureLoader` over the data URI, with
+   `texture.encoding = THREE.sRGBEncoding` for every colour map (this project is three.js **r128**
+   and uses `outputEncoding`; a colour map loaded without this renders wrong, and it is the single
+   most common way this work goes quietly bad), sensible `anisotropy`, `alphaTest` for cutouts, and
+   **registration in `dispose()`** — V14's surface grows with every texture added.
+
+**Budgets, fixed here:** ≤ 250 KB encoded per texture; ≤ 2.0 MB encoded for all images together;
+`dist/solar-app.html` ≤ 6.0 MB after Phase 11. WebP preferred where alpha is needed, PNG where it
+is not. If a device needs more than its share, reduce resolution — do not raise the budget without
+the owner.
+
+**Note on three.js r128:** `DecalGeometry` is **not** in the bundled build, and §B forbids adding a
+library. Surface markings are therefore thin plane meshes with an alpha texture and `polygonOffset`,
+or a second UV set on the device's own face — not decals. `InstancedMesh` **is** available and is
+the route for large PV arrays (§7.7 risk 7b).
+
+**Verify:**
+```bash
+node scripts/build-images.js
+node -e "global.window={};require('./js/image-assets.js');const a=window.IMAGE_ASSETS;let t=0;for(const k in a){t+=a[k].bytes;console.log(k,a[k].w+'x'+a[k].h,(a[k].bytes/1024).toFixed(0)+'KB')}console.log('total',(t/1048576).toFixed(2)+'MB')"
+node build.js
+```
+
+---
+
+#### Step 29 — Pilot device end to end: the gPV fuse holder
+
+One device, completely, before any rollout. The gPV holder is the right pilot: there are four of
+them, they are small, they are already selectable, and the owner has already looked at reference
+imagery for them.
+
+**Blocked until §11.2 assets for this device arrive.** If they do not, the pilot moves to whichever
+device does have them; the step does not proceed on invented dimensions.
+
+**Do:** T1 from §11.1 — body at datasheet dimensions; carrier, lens window, screws and terminals as
+separate parts so the carrier can open and the window can mean something later; de-lit face texture
+for the printed markings; cable entry and exit defined on the model, not painted on; the status
+window kept as its own part with **no** assigned meaning until the real product's behaviour is
+known.
+
+**Verify:**
+
+| Check | Assertion |
+|---|---|
+| 29-1 | Rendered dimensions equal the datasheet within 1 mm — measured from the bounding box, printed |
+| 29-2 | Four camera angles screenshotted; the face texture shows no baked shadow disagreeing with the scene light |
+| 29-3 | Selection, drawer, tag label and isolation still work on the rebuilt device |
+| 29-4 | Object / geometry / material / texture counts before and after, with the predicted delta |
+| 29-5 | Texture memory via `renderer.info.memory`, before and after |
+
+**Acceptance:** side-by-side with the previous version in `work.md`, the dimension check printed,
+and the label states whether dimensions are confirmed or representative.
+
+---
+
+#### Step 30 — Roll out, one device family per commit
+
+Order: DC string fuses → DC isolators → DC SPDs → MCB / RCBO family → the inverter shell →
+battery modules → enclosures → PV modules (via `InstancedMesh`). Each family repeats Step 29's
+checks. A family without §11.2 assets is skipped and recorded as skipped — not approximated.
+
+Ship **T3 (the inspector photo panel)** for every device whose photo exists, independent of whether
+its T1 model has been rebuilt. It is the cheapest realism in this phase.
+
+---
+
+#### Step 31 — Performance and memory guard
+
+Textures are the easiest way to break a scene that currently runs fine.
+
+| Check | Assertion |
+|---|---|
+| 31-1 | Draw calls, triangles, geometries, textures, programs — recorded per rollout commit, trend visible |
+| 31-2 | Frame time over 300 frames at the default camera and in the tightest inspection view |
+| 31-3 | **20 profile switches**: `renderer.info.memory.textures` returns to its starting value. The V14 test done properly — this is the check V14 was closed with but never ran |
+| 31-4 | Bundle size and load time from `file://`, cold profile |
+| 31-5 | The single-file bundle opened on a second PC with the network disabled — §F, with every image visible |
+
+---
+
+### 🔍 REVIEW GATE 11 — the equipment is real, and honest about it. Stop here.
+
+1. Step 27's before/after colour numbers recorded; no texture work started before it.
+2. Every embedded image traceable to `source.json` with manufacturer, model and dimensions —
+   or the device is labelled representative.
+3. `build.js` fails on a non-`data:` relative asset reference — demonstrated, not asserted.
+4. Budgets met: ≤ 250 KB per texture, ≤ 2.0 MB total, bundle ≤ 6.0 MB.
+5. 31-3 passes with a **measured** texture count, not a `typeof`.
+6. No AI-generated illustration used as a product texture anywhere in the tree.
+
 ---
 
 ## E. Deferred — do not start without explicit approval
@@ -1240,5 +2153,45 @@ Write it in `work.md` and stop. Specifically:
 
 ---
 
+## H. Owner decisions needed before Phases 8–11 can finish
+
+None of these blocks the start of Phase 8. Each blocks the step named.
+
+| # | Decision | Blocks | Recommendation |
+|---|---|---|---|
+| **D1** | Both documents are REV 00 / NOT APPROVED, and the drawing set says it is superseded by CFG-001. Ship both, read-only, with the banners intact? | Step 18 | **Yes** — ship both; the drawing set alone would misinform |
+| **D2** | `HYB-1PH-FA-REV02` (steps 0–23), cited by all ten sheets, was not supplied. Provide it, or accept that the app cannot show the basis of a sheet? | Step 16 record; Step 22 citations | Provide it if it exists; otherwise record as unavailable |
+| **D3** | **DC conductor colour convention.** The owner's legend says red positive / black negative; IEC 60445 tabulates DC identification differently. Which does the app show, and under which name? | Step 23, and all of Phase 10 | Owner's own legend, with the convention named on screen |
+| **D4** | Each **conditional** device in table 08-1 — `F11 F12 F21 F22`, `F13 F23`, `K5`, `RCD7`, `Q9`, `SPD-EPS`, `SPD-DAT`: present, absent, or justified later? | Gate 8, Step 20, Step 21 | Decide per device; the app shows the conditional marker until decided |
+| **D5** | `F5` and `Q5` are one object in the app. Split them in the scene? | Step 21a | **Yes** — they are separate devices with separate duties, and LOTO depends on `Q5` |
+| **D6** | `Q9` in the drawing is a bypass switch interlocked with `Q8`; the app models a 3-position I-0-II changeover. Which is the real installation? | Step 21 | Owner's call — this is topology, not implementation |
+| **D7** | `qn_mcb` (non-critical loads) exists in the app with no counterpart tag in 08-1. Add a tag, or record it as out of drawing scope? | Step 19 | Record it; add a tag at the next drawing revision |
+| **D8** | The 3D scene will speak the owner's tags while the built-in SLD-01 keeps its own, because `sld-schematic.js` is protected. Accept the divergence, permit editing that file, or supply a replacement drawing? | Step 22 | Accept for now; revisit when the drawing set is approved |
+| **D9** | Configuration class per profile (HY-1…HY-8) — confirm the proposed class for each of the five registered profiles | Step 20 | Confirm or correct; unconfirmed profiles display «تأییدنشده» |
+| **D10** | Per-device image assets to §11.2, starting with the gPV holder | Step 29 onward | Supply identity + dimensions with every image, or the model stays representative |
+| **D11** | Is the three-phase drawing coming? Nothing in Phases 8–11 touches three-phase, and §7.4 still gates it | Phase 7 family work | Out of scope until it arrives |
+
+---
+
+## I. Definition of done for Phases 8–11
+
+- The ten single-phase sheets and the configuration standard open from `dist/solar-app.html` on a
+  second PC, network disabled, with zero external requests and the NOT APPROVED / SUPERSEDED
+  banners intact.
+- `docs/owner/mapping-1ph.md` is complete, owner-corrected, and every row has a status; no device
+  is silently missing.
+- Every conductor in the scene draws its colour from `CONDUCTOR_CODE`; DC pairs are adjacent and
+  correctly ordered at every termination; the legend is generated from that same table and names
+  the convention in use.
+- Every embedded image is traceable to a manufacturer, model and datasheet dimension, or its
+  device is labelled representative. No AI-generated illustration is used as a product texture.
+- Budgets met: bundle ≤ 6.0 MB, ≤ 2.0 MB of images, per-texture ≤ 250 KB; draw calls, frame time
+  and texture memory recorded at every gate.
+- 16/16 model tests pass at every gate; the energy audit is unchanged by Phases 8 and 10.
+- Every check written in these phases has a recorded failing run on a broken variant.
+
+---
+
 *Companion documents: `Ideas.md` (findings and rationale), `HISTORY.md` (decision log),
-`work.md` (your reports).*
+`REVIEW.md` (independent review of Phases 6 and 7), `gpt-ideas.md` (third-party reviews),
+`docs/owner/` (the owner source documents and the tag mapping), `work.md` (your reports).*
