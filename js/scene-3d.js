@@ -4438,14 +4438,6 @@ class HybridSolar3DScene {
     }
   }
 
-  getParticleSpeed(circuitId, watts, capacity) {
-    const p = this.animatedParticles.find(item => item.id === circuitId);
-    const circuit = this.activeProfile?.connectivity?.circuits?.[circuitId];
-    const cap = capacity || circuit?.ratedPower_W || (this.activeProfile?.equipment?.inverter?.acRating_W) || 5000;
-    const mag = Math.abs(watts !== undefined ? watts : (p?.watts || 0));
-    return Math.min(0.45, Math.max(0.05, (mag / cap) * 0.45));
-  }
-
   on(event, callback) {
     if (!this.eventListeners[event]) this.eventListeners[event] = [];
     this.eventListeners[event].push(callback);

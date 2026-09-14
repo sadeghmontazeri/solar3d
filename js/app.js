@@ -3174,6 +3174,9 @@
     switchSystemProfile: function(profileId) {
       return switchSystemProfile(profileId);
     },
+    get activeProfile() {
+      return state.activeProfile || (window.SystemProfiles?.get(state.activeProfileId || 'profile-hyb-1p-5kw-v1')) || null;
+    },
     getState: () => state
   };
 

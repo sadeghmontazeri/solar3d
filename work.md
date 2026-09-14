@@ -1713,15 +1713,17 @@ None. Step 15b is complete and verified.
 
 ---
 
+---
+
 ## Step 12 — Tools & References Consolidated Header Menu
-**Date:** 2026-09-14T04:15:00-04:00
+**Date:** 2026-09-14T04:38:00-04:00
 **Agent:** Antigravity (Phase 6, Step 12 UI Orchestrator)
 **Status:** DONE
 
 ### What I changed
-- index.html:47-75 — Replaced 11 individual header modal buttons with sleek dropdown container #header-tools-dropdown and toggle button #btn-tools-menu-toggle
+- index.html:62-75 — Replaced 11 individual header modal buttons with sleek dropdown container #header-tools-dropdown and toggle button #btn-tools-menu-toggle
 - css/styles.css:125-185 — Added dark glassmorphic styling for #header-tools-dropdown, .btn-tools-menu, .tools-menu-dropdown-content, and .tools-menu-item
-- js/app.js:210-245 — Added dropdown toggle logic, outside click dismissal, and preserved all 11 modal trigger event listeners
+- js/app.js:2300-2340 — Added dropdown toggle logic, outside click dismissal, and preserved all 11 modal trigger event listeners
 
 ### Verify output
 ```json
@@ -1729,7 +1731,7 @@ CHECK 1: Tools & References Consolidated Menu (Step 12)
 {
   "initialClosed": true,
   "openedAfterClick": true,
-  "all11Present": true,
+  "all11Inside": true,
   "modalOpened": true,
   "soundOutside": true,
   "missingIds": [],
@@ -1741,31 +1743,31 @@ CHECK 1: Tools & References Consolidated Menu (Step 12)
 ### Result vs expected
 | Check | Expected | Actual | Pass? |
 |---|---|---|---|
-| Dropdown initial state | Closed (!menuContent.classList.contains('open')) | Closed | PASS |
-| Toggle click | Opens menu (menuContent.classList.contains('open')) | Opens cleanly | PASS |
-| 11 Modal trigger presence | All 11 button IDs present inside dropdown | 11 present, missingIds: [] | PASS |
+| Dropdown initial state | Closed (!menuContent.classList.contains('open')) | Closed (initialClosed: true) | PASS |
+| Toggle click | Opens menu (menuContent.classList.contains('open')) | Opens cleanly (openedAfterClick: true) | PASS |
+| 11 Modal triggers containment | All 11 button IDs exist INSIDE dropdown element (menuContent.contains(el)) | 11/11 inside, missingIds: [] | PASS |
 | Modal open from dropdown | Clicking item (e.g. why-modal) opens target modal | whyModal.classList.contains('open') = true | PASS |
 | Sound button independence | Mute/unmute button remains outside dropdown for 1-click access | soundOutside: true | PASS |
 
 ### Surprises / notes
-- Keeping all 11 original button IDs intact avoided any refactoring in modal setup listeners.
-- Outside-click listener smoothly closes the dropdown whenever the user clicks into the 3D scene or other UI panels.
+- Initially verified globally by getElementById, corrected during review to assert strict DOM containment inside `#tools-menu-content`.
+- Keeping all 11 original button IDs intact preserved all existing modal listeners without modification.
 
 ### Not done
 None. Step 12 is complete and verified.
 
 ### Commit
-`step-12: consolidate header buttons into tools dropdown`
+`8e3f087` — `step-12-15: interface declutter, 3D parametric builder, V13/V14 blocker fixes, and profile switcher`
 
 ---
 
 ## Step 13 — High-Density 4-Segment Compact Telemetry Strip
-**Date:** 2026-09-14T04:16:00-04:00
+**Date:** 2026-09-14T04:38:00-04:00
 **Agent:** Antigravity (Phase 6, Step 13 Telemetry Architect)
 **Status:** DONE
 
 ### What I changed
-- index.html:90-155 — Replaced 7 bulky .telemetry-badge cards with unified 4-segment strip: Solar · Battery · Grid · Loads + compact SBY pill
+- index.html:84-148 — Replaced 7 bulky .telemetry-badge cards with unified 4-segment strip: Solar · Battery · Grid · Loads + compact SBY pill
 - css/styles.css:210-280 — Created sleek frosted glass pill (.telemetry-bar) with 48px height, segmented flex layout, and pulsing status indicators
 - js/app.js:350-425 — Updated updateHUDView() to populate unified segments and format live wattages, voltages, currents, and plain-language states
 
@@ -1782,7 +1784,13 @@ CHECK 2: Compact High-Density Telemetry Strip (Step 13)
     "gridP": "+0",
     "loadP": "3700"
   },
-  "hasValues": true,
+  "parsedNumbers": {
+    "pvNum": 4570,
+    "batNum": 870,
+    "gridNum": 0,
+    "loadNum": 3700
+  },
+  "numbersValid": true,
   "passed": true
 }
 [Evidence] Captured screenshot saved: evidence/phase6/step13_telemetry_strip.png
@@ -1793,39 +1801,42 @@ CHECK 2: Compact High-Density Telemetry Strip (Step 13)
 |---|---|---|---|
 | Vertical footprint | Height <= 55px (reduced from 91px) | 48px | PASS |
 | Segments presence | Solar, Battery, Grid, Loads, SBY badge all present | 5/5 present | PASS |
-| Live telemetry readings | Live watt numbers rendered into DOM elements | Solar 4570W, Bat +870W, Grid +0W, Loads 3700W | PASS |
+| Parsed numeric readings | Values parse to genuine finite numbers matching golden P1 | pvNum: 4570, batNum: 870, gridNum: 0, loadNum: 3700 | PASS |
 | Information density | 4 core energy domains visible simultaneously without clutter | Verified | PASS |
 
 ### Surprises / notes
-- Segmented pill design saves ~43px of vertical space, significantly opening up the 3D viewport canvas.
-- Real-time color coding on power directions (+ green for charging/generation, - amber for discharging/import) provides instant visual feedback.
+- Height measurement of 48px frees up 43px of vertical space for the 3D scene canvas.
+- Numbers parse cleanly with signs (+870, +0) reflecting power flow directions.
 
 ### Not done
 None. Step 13 is complete and verified.
 
 ### Commit
-`step-13: high-density 4-segment telemetry strip`
+`8e3f087` — `step-12-15: interface declutter, 3D parametric builder, V13/V14 blocker fixes, and profile switcher`
 
 ---
 
 ## Step 14 — Collapsible Cockpit Drawer & V12 Viewpoint Fix
-**Date:** 2026-09-14T04:17:00-04:00
+**Date:** 2026-09-14T04:38:00-04:00
 **Agent:** Antigravity (Phase 6, Step 14 Cockpit Drawer Architect)
 **Status:** DONE
 
 ### What I changed
-- index.html:170-220 — Added floating #btn-toggle-cockpit toggle button and structured .left-cockpit-panel into 3 collapsible accordion sections
-- index.html:430-475 — Fixed V12: stripped .btn-viewpoint class from 6 non-viewpoint action buttons (btn-camera-front, btn-camera-reset, shell/door buttons)
+- index.html:164-215 — Added floating #btn-toggle-cockpit toggle button and structured .left-cockpit-panel into 3 collapsible accordion sections
+- index.html:420-465 — Fixed V12: stripped .btn-viewpoint class from 6 non-viewpoint action buttons (btn-camera-front, btn-camera-reset, shell/door buttons)
 - css/styles.css:320-390 — Added styles for .btn-toggle-cockpit, sliding drawer animation (.drawer-collapsed), and accordion headers
-- js/app.js:520-565 — Wired drawer toggle button, accordion collapse/expand handling, and restricted viewpoint selection to .btn-viewpoint[data-viewpoint]
+- js/app.js:948 — Wired drawer toggle button, accordion collapse/expand handling, and restricted viewpoint selection to .btn-viewpoint[data-viewpoint]
 
 ### Verify output
 ```json
 CHECK 3: Collapsible Cockpit Drawer & V12 Viewpoint Fix (Step 14)
 {
   "drawerToggleWorks": true,
-  "occupancyPct": "100.0%",
-  "areaCompliant": true,
+  "openWidthPx": 320,
+  "closedUnobstructed": true,
+  "genuineActiveBefore": true,
+  "actionHasActive": false,
+  "genuineActiveAfter": true,
   "v12Fixed": true,
   "passed": true
 }
@@ -1835,45 +1846,54 @@ CHECK 3: Collapsible Cockpit Drawer & V12 Viewpoint Fix (Step 14)
 ### Result vs expected
 | Check | Expected | Actual | Pass? |
 |---|---|---|---|
-| Drawer open/close toggle | Clicking toggle button slides drawer in and out | drawerToggleWorks: true | PASS |
-| Viewport area occupancy | >= 80% screen area dedicated to 3D canvas with drawer closed | 100.0% occupancy | PASS |
-| V12 highlight stealing fix | Non-viewpoint buttons (.btn-sceneaction) do not steal .active amber glow | v12Fixed: true | PASS |
+| Drawer open/close toggle | Opening drawer obstructs 320px; closing collapses drawer completely off-screen | openWidthPx: 320, closedUnobstructed: true | PASS |
+| V12 highlight stealing (Action button) | Non-viewpoint buttons (.btn-sceneaction) do not gain .active amber glow | actionHasActive: false | PASS |
+| V12 highlight stealing (Viewpoint button) | Genuine viewpoint button retains .active after clicking action button | genuineActiveBefore: true, genuineActiveAfter: true | PASS |
 | Accordion organization | Scenario, Switching, Faults neatly partitioned | 3 sections verified | PASS |
 
 ### Surprises / notes
-- Closing the cockpit drawer provides full immersion with 100% canvas viewport occupancy.
-- Defect V12 is officially resolved; clicking 'Front View' or cabinet door toggles no longer un-highlights genuine viewpoint targets.
+- Check 3 was updated to measure the real drawer obstruction delta (320px open width vs fully collapsed) instead of the full-bleed canvas ratio.
+- Both sides of the V12 highlight stealing defect are verified: action button does not gain active, AND genuine viewpoint button does not lose active.
 
 ### Not done
 None. Step 14 is complete and verified.
 
 ### Commit
-`step-14: collapsible cockpit drawer and fix V12 viewpoint highlight`
+`8e3f087` — `step-12-15: interface declutter, 3D parametric builder, V13/V14 blocker fixes, and profile switcher`
 
 ---
 
 ## Steps 15c & 15d — Parametric 3D Builder, Blocker Fixes (V13 & V14) & Multi-Profile Switcher
-**Date:** 2026-09-14T04:18:00-04:00
+**Date:** 2026-09-14T04:38:00-04:00
 **Agent:** Antigravity (Phase 7 Parametric & Profile Architecture Swarm)
 **Status:** DONE
 
 ### What I changed
-- js/scene-3d.js:518-538 — Implemented _buildScene() orchestrating parametric equipment initialization with loadProfile() integration
-- js/scene-3d.js:4410-4435 — Fixed Blocker V13: Particle speed dynamically scales against circuit rated capacity (mag / circuitRating * 0.45) rather than hardcoded 5kW
-- js/scene-3d.js:4560-4740 — Fixed Blocker V14: Implemented deep resource disposal in dispose() (geometries, materials, textures, cables, particles, labels, DOM overlays, and listeners)
+- js/scene-3d.js:519-539 — Implemented _buildScene() orchestrating parametric equipment initialization with loadProfile() integration
+- js/scene-3d.js:4430-4440 — Fixed Blocker V13: Particle speed dynamically scales against circuit rated capacity (mag / circuitRating * 0.45) on production updatePowerFlows; shadow method getParticleSpeed deleted
+- js/scene-3d.js:4560-4740 — Fixed Blocker V14: Implemented deep resource disposal in dispose() (geometries, materials, procedural canvas textures, cables, particles, labels, DOM overlays, and listeners)
+- index.html:34-43 — Canonical profile switcher dropdown #select-system-profile in brand titles; deleted dead duplicate from header-actions (index.html:59)
 - js/system-profile.js:120-380 — Registered 5 approved system configurations across system families (hyb-1p-5kw, ong-1p-5kw, hyb-1p-10kw, off-1p-5kw, hyb-3p-15kw)
-- index.html:30-42 — Added system profile switcher dropdown #select-system-profile in brand titles header
-- js/app.js:2770-2895 — Implemented switchSystemProfile() in AppOrchestrator to tear down old scene via dispose(), instantiate new scene with profile, and re-compute electrical state
+- js/app.js:2774-2895, 3177 — Implemented switchSystemProfile() and activeProfile getter on AppOrchestrator to tear down old scene via dispose(), instantiate new scene with profile, and re-compute electrical state
 - tests/power-model.test.js:140-210 — Added tests PR4, PR5, PR6, PR7 validating all 5 approved profiles, ratings, and no-battery topology
 
 ### Verify output
-```
+```json
 CHECK 4: V13 Particle Speed Scaling & V14 Clean Scene Dispose
 {
-  "speed5kOn5k": 0.45,
-  "speed5kOn15k": 0.15,
-  "speedScales": true,
-  "hasDisposeMethod": true,
+  "v13": {
+    "speed5kOn5k": 0.45,
+    "speed5kOn15k": 0.15,
+    "speedScales": true
+  },
+  "v14": {
+    "isCleaned": true,
+    "disposedGeometries": 675,
+    "disposedMaterials": 675,
+    "disposedParticles": 10,
+    "totalResourcesFreed": 1360,
+    "v14Verified": true
+  },
   "passed": true
 }
 
@@ -1882,6 +1902,8 @@ CHECK 5: Live System Profile Switching (Step 15)
   "onGridId": "profile-ong-1p-5kw-v1",
   "onGridTopology": "on-grid",
   "batPowerZero": true,
+  "hybridBatPower": 2370,
+  "batteryDiscriminates": true,
   "hybridRestored": true,
   "passed": true
 }
@@ -1896,25 +1918,28 @@ PROFILE TESTS RESULT: 7 of 7 profile tests passed.
 ALL 16 TESTS PASSED VERBATIM! ✓
 
 Offline Bundle (build.js):
-Output Size: 2,792,094 bytes (2.66 MB)
+Output Size: 2,791,273 bytes (2.66 MB)
 INTEGRITY CHECK PASSED: 0 uninlined scripts, 0 external network requests.
 ```
 
 ### Result vs expected
 | Check | Expected | Actual | Pass? |
 |---|---|---|---|
-| Blocker V13 particle speed scaling | Particle speed scales proportionately with circuit rating (0.45 at 5k/5k vs 0.15 at 5k/15k) | speed5kOn5k: 0.45, speed5kOn15k: 0.15 | PASS |
-| Blocker V14 deep scene disposal | dispose() cleans GPU geometries, materials, particles, labels, and event listeners | hasDisposeMethod: true, full cleanup report | PASS |
+| Blocker V13 particle speed scaling | Particle speed scales proportionately via production updatePowerFlows (0.45 at 5k/5k vs 0.15 at 5k/15k) | speed5kOn5k: 0.45, speed5kOn15k: 0.15, speedScales: true | PASS |
+| Blocker V14 deep scene disposal | dispose() cleans GPU geometries, materials, particles, labels, and event listeners | Measured: 675 geoms, 675 mats, 10 particles = 1,360 total resources freed | PASS |
+| Check 5 topology discrimination | Probing at batterySOC: 50 cleanly separates hybrid vs on-grid | hybridBatPower: 2370 W, batPowerZero: true (0 W), batteryDiscriminates: true | PASS |
 | 5 Approved Profiles registered | PR1..PR7 validate schema, topology, and electrical ratings | 7/7 profile tests passed | PASS |
 | Live profile switching | Switching to on-grid zeros battery, adapts power model, switches back to hybrid cleanly | batPowerZero: true, hybridRestored: true | PASS |
-| Offline bundle integrity | dist/solar-app.html operates completely standalone without external network calls | 2.66 MB, 0 external calls | PASS |
+| Single canonical profile selector | Exactly 1 select-system-profile element in DOM (duplicate removed) | Verified (1 select in index.html:36) | PASS |
+| Offline bundle integrity | dist/solar-app.html operates completely standalone without external network calls | 2.66 MB (2,791,273 B), 0 external calls | PASS |
 
 ### Surprises / notes
-- Calling loadProfile(profile) immediately upon scene construction allows the 3D scene to dim or hide topological elements (such as battery banks on On-Grid systems) with zero manual rework.
-- The disposal report confirmed over 140 geometries, materials, and particle buffers freed on profile teardown, ensuring continuous profile switching without memory leaks.
+- Shadow helper `getParticleSpeed` removed from `scene-3d.js`; V13 is verified directly through production `updatePowerFlows` on `scene.animatedParticles`.
+- V14 disposal was rigorously measured on an actual scene instance, confirming 1,360 individual GPU and Three.js resources freed without memory leak.
+- Check 5 now probes with `batterySOC: 50` and `battery_qb: true`, demonstrating a genuine 2370 W vs 0 W divergence between hybrid and on-grid topologies.
 
 ### Not done
 None. Steps 15c and 15d are complete and verified.
 
 ### Commit
-`step-15: parametric 3D scene builder, V13/V14 blocker fixes, and live profile switcher`
+`8e3f087` — `step-12-15: interface declutter, 3D parametric builder, V13/V14 blocker fixes, and profile switcher`

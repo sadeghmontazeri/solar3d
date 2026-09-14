@@ -170,8 +170,11 @@ setTimeout(async () => {
           'btn-open-legend', 'btn-open-guide', 'btn-open-exercises',
           'btn-open-contractors', 'btn-open-disputes'
         ];
-        const missingIds = expectedIds.filter(id => !document.getElementById(id));
-        const all11Present = missingIds.length === 0;
+        const missingIds = expectedIds.filter(id => {
+          const el = document.getElementById(id);
+          return !el || !menuContent.contains(el);
+        });
+        const all11Inside = missingIds.length === 0;
 
         // 4. Test opening one modal from dropdown (e.g. why-modal)
         const whyBtn = document.getElementById('btn-open-why-header');
@@ -191,11 +194,11 @@ setTimeout(async () => {
         return {
           initialClosed,
           openedAfterClick,
-          all11Present,
+          all11Inside,
           modalOpened,
           soundOutside,
           missingIds,
-          passed: openedAfterClick && all11Present && modalOpened && soundOutside
+          passed: initialClosed && openedAfterClick && all11Inside && modalOpened && soundOutside
         };
       })()`);
 
@@ -228,20 +231,26 @@ setTimeout(async () => {
         const allSegmentsPresent = !!(solar && battery && grid && loads && sby);
 
         // Value readings
-        const pvP = document.getElementById('hud-pv-p')?.textContent || '';
-        const batP = document.getElementById('hud-bat-p')?.textContent || '';
-        const gridP = document.getElementById('hud-grid-p')?.textContent || '';
-        const loadP = document.getElementById('hud-load-p')?.textContent || '';
+        const pvP = document.getElementById('hud-pv-p')?.textContent?.trim() || '';
+        const batP = document.getElementById('hud-bat-p')?.textContent?.trim() || '';
+        const gridP = document.getElementById('hud-grid-p')?.textContent?.trim() || '';
+        const loadP = document.getElementById('hud-load-p')?.textContent?.trim() || '';
 
-        const hasValues = pvP.length > 0 && batP.length > 0 && gridP.length > 0 && loadP.length > 0;
+        const pvNum = parseFloat(pvP);
+        const batNum = parseFloat(batP.replace('+', ''));
+        const gridNum = parseFloat(gridP.replace('+', ''));
+        const loadNum = parseFloat(loadP);
+
+        const numbersValid = !isNaN(pvNum) && !isNaN(batNum) && !isNaN(gridNum) && !isNaN(loadNum);
 
         return {
           heightPx,
           heightCompliant,
           allSegmentsPresent,
           readings: { pvP, batP, gridP, loadP },
-          hasValues,
-          passed: heightCompliant && allSegmentsPresent && hasValues
+          parsedNumbers: { pvNum, batNum, gridNum, loadNum },
+          numbersValid,
+          passed: heightCompliant && allSegmentsPresent && numbersValid
         };
       })()`);
 
@@ -265,45 +274,50 @@ setTimeout(async () => {
         }
 
         // 1. Toggle open
-        toggleBtn.click();
-        await new Promise(r => setTimeout(r, 300));
-        const opened = !panel.classList.contains('collapsed') && !panel.classList.contains('drawer-collapsed');
+        if (panel.classList.contains('collapsed') || panel.classList.contains('drawer-collapsed')) {
+          toggleBtn.click();
+          await new Promise(r => setTimeout(r, 300));
+        }
+        const openRect = panel.getBoundingClientRect();
+        const openWidth = openRect.width;
+        const openObstructs = openWidth > 200 && openRect.left < window.innerWidth && openRect.right > 0;
 
         // 2. Toggle closed
         toggleBtn.click();
         await new Promise(r => setTimeout(r, 300));
         const closed = panel.classList.contains('collapsed') || panel.classList.contains('drawer-collapsed');
+        const closedRect = panel.getBoundingClientRect();
+        const closedUnobstructed = closed && (closedRect.right <= 0 || closedRect.left >= window.innerWidth || panel.classList.contains('drawer-collapsed'));
 
-        // 3. Viewport occupancy calculation
-        const screenW = window.innerWidth;
-        const screenH = window.innerHeight;
-        const totalArea = screenW * screenH;
-        const viewport3D = document.getElementById('canvas-container');
-        const canvasRect = viewport3D ? viewport3D.getBoundingClientRect() : { width: screenW, height: screenH };
-        const canvasArea = canvasRect.width * canvasRect.height;
-        const occupancyPct = (canvasArea / totalArea) * 100;
-        const areaCompliant = occupancyPct >= 80;
-
-        // 4. V12 Fix: Click non-viewpoint scene action button (#btn-camera-front)
-        // Ensure it does NOT steal .active from genuine viewpoint button
+        // 3. V12 Fix: Complete bidirectional test
+        // Step A: Click genuine viewpoint button
         const genuineVp = document.querySelector('.btn-viewpoint[data-viewpoint="pv"]');
         if (genuineVp) genuineVp.click();
         await new Promise(r => setTimeout(r, 200));
-        const genuineActiveBefore = genuineVp ? genuineVp.classList.contains('active') : false;
+        const genuineActiveBefore = !!genuineVp?.classList.contains('active');
 
+        // Step B: Click non-viewpoint scene action button (#btn-camera-front)
         const actionBtn = document.getElementById('btn-camera-front');
         if (actionBtn) actionBtn.click();
         await new Promise(r => setTimeout(r, 200));
 
-        const actionHasActive = actionBtn ? actionBtn.classList.contains('active') : false;
-        const v12Fixed = !actionHasActive;
+        // Step C: Verify action button did NOT gain .active
+        const actionHasActive = !!actionBtn?.classList.contains('active');
+
+        // Step D: Verify genuine viewpoint STILL retains .active (the missing half of V12)
+        const genuineActiveAfter = !!genuineVp?.classList.contains('active');
+
+        const v12Fixed = genuineActiveBefore && !actionHasActive && genuineActiveAfter;
 
         return {
-          drawerToggleWorks: opened && closed,
-          occupancyPct: occupancyPct.toFixed(1) + '%',
-          areaCompliant,
+          drawerToggleWorks: openObstructs && closedUnobstructed,
+          openWidthPx: openWidth,
+          closedUnobstructed,
+          genuineActiveBefore,
+          actionHasActive,
+          genuineActiveAfter,
           v12Fixed,
-          passed: opened && closed && areaCompliant && v12Fixed
+          passed: openObstructs && closedUnobstructed && v12Fixed
         };
       })()`);
 
@@ -323,23 +337,58 @@ setTimeout(async () => {
         const scene = window.sceneInstance;
         if (!scene) return { error: 'sceneInstance not found', passed: false };
 
-        // 1. Test V13 particle speed scaling:
-        // At 5kW on a 5kW circuit: speed is max (0.45)
-        // At 5kW on a 15kW circuit: speed should scale to (5000/15000)*0.45 = 0.15
-        const speed5kOn5k = scene.getParticleSpeed('inv_grid', 5000, 5000);
-        const speed5kOn15k = scene.getParticleSpeed('inv_grid', 5000, 15000);
-        const speedScales = speed5kOn15k < speed5kOn5k && Math.abs(speed5kOn15k - 0.15) < 0.05;
+        // 1. Test V13 particle speed scaling through PRODUCTION updatePowerFlows:
+        scene.updatePowerFlows({
+          inv_grid: { active: true, watts: 5000, circuitCapacity: 5000 }
+        });
+        const p5k = scene.animatedParticles.find(p => p.id === 'inv_grid');
+        const speed5kOn5k = p5k ? p5k.speed : 0;
 
-        // 2. Test V14 dispose() implementation
-        const report = scene.disposalReport || null;
-        const hasDisposeMethod = typeof scene.dispose === 'function';
+        scene.updatePowerFlows({
+          inv_grid: { active: true, watts: 5000, circuitCapacity: 15000 }
+        });
+        const p15k = scene.animatedParticles.find(p => p.id === 'inv_grid');
+        const speed5kOn15k = p15k ? p15k.speed : 0;
+
+        const speedScales = speed5kOn15k < speed5kOn5k &&
+                            Math.abs(speed5kOn15k - 0.15) < 0.05 &&
+                            Math.abs(speed5kOn5k - 0.45) < 0.05;
+
+        // 2. Test V14 dispose() with a dedicated test scene instance to capture actual numbers:
+        const dummyDiv = document.createElement('div');
+        dummyDiv.style.width = '300px';
+        dummyDiv.style.height = '300px';
+        document.body.appendChild(dummyDiv);
+
+        const testScene = new window.HybridSolar3DScene(dummyDiv, window.SystemProfiles?.get('profile-hyb-1p-5kw-v1'));
+        testScene.dispose();
+        const disposalReport = testScene.disposalReport || null;
+
+        if (dummyDiv.parentNode) dummyDiv.parentNode.removeChild(dummyDiv);
+
+        const isCleaned = !!disposalReport?.isCleaned;
+        const geomCount = disposalReport?.disposedGeometries || 0;
+        const matCount = disposalReport?.disposedMaterials || 0;
+        const partCount = disposalReport?.disposedParticles || 0;
+        const totalFreed = geomCount + matCount + partCount;
+
+        const v14Verified = isCleaned && totalFreed > 50 && geomCount > 0 && matCount > 0;
 
         return {
-          speed5kOn5k,
-          speed5kOn15k,
-          speedScales,
-          hasDisposeMethod,
-          passed: speedScales && hasDisposeMethod
+          v13: {
+            speed5kOn5k,
+            speed5kOn15k,
+            speedScales
+          },
+          v14: {
+            isCleaned,
+            disposedGeometries: geomCount,
+            disposedMaterials: matCount,
+            disposedParticles: partCount,
+            totalResourcesFreed: totalFreed,
+            v14Verified
+          },
+          passed: speedScales && v14Verified
         };
       })()`);
 
@@ -365,21 +414,26 @@ setTimeout(async () => {
         const state1 = window.AppOrchestrator.getState();
         const onGridHandled = state1.breakers.battery_qb === false;
 
-        // Verify power computation with switched profile
+        // Verify power computation with switched profile at batterySOC: 50 (realistic non-empty battery)
         const activeProfile = window.AppOrchestrator.activeProfile;
-        const resOnGrid = window.computePowerModel({
+        const probeInput = {
           irradiance: 850,
           temperature: 25,
           normalLoadPower: 2200,
           criticalLoadPower: 0,
-          batterySOC: 0,
+          batterySOC: 50,
           operatingMode: 'normal_day',
           sbyPosition: '0',
-          breakers: state1.breakers,
+          breakers: { ...state1.breakers, battery_qb: true, battery_ocpd: true, q0_mcb: true },
           failures: {}
-        }, activeProfile);
+        };
+
+        const resOnGrid = window.computePowerModel(probeInput, activeProfile);
+        const resHybrid = window.computePowerModel(probeInput, window.SystemProfiles.get('profile-hyb-1p-5kw-v1'));
 
         const batPowerZero = resOnGrid.battery.p === 0;
+        const hybridBatPower = resHybrid.battery.p;
+        const batteryDiscriminates = batPowerZero && (hybridBatPower !== 0);
 
         // 2. Switch back to canonical hybrid 5kW profile
         window.AppOrchestrator.switchSystemProfile('profile-hyb-1p-5kw-v1');
@@ -392,8 +446,10 @@ setTimeout(async () => {
           onGridId: switchedProfile?.id,
           onGridTopology: switchedProfile?.family?.topology,
           batPowerZero,
+          hybridBatPower,
+          batteryDiscriminates,
           hybridRestored,
-          passed: switchedProfile?.id === 'profile-ong-1p-5kw-v1' && batPowerZero && hybridRestored
+          passed: switchedProfile?.id === 'profile-ong-1p-5kw-v1' && batteryDiscriminates && hybridRestored
         };
       })()`);
 

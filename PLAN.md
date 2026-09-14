@@ -8,7 +8,7 @@
 
 ---
 
-## Status — updated 2026-09-14 after Review Gate 8
+## Status — updated 2026-09-14 after Review Gate 7
 
 | Phase | Steps | State |
 |---|---|---|
@@ -18,15 +18,15 @@
 | 3 Power accounting | 7, 7b, 8 | ✅ done — **electrical story is honest** |
 | 4 Interaction safety | 9 | ✅ done |
 | 5 One cabinet | 10, 11 | ✅ done — **MDB inspection & safe isolation proven** |
-| 6 Interface declutter | 12, 13, 14 | ✅ done — **interface decluttered, compact strip, drawer collapsed** |
-| 7 Multiple system families | 15a–15d, families | ✅ done — **contract, model param, 3D builder, V13/V14 fixed, 5 profiles live** |
+| 6 Interface declutter | 12, 13, 14 | ⬅️ **next** |
+| 7 Multiple system families | 15a–15d, families | 🔄 **15a contract & 15b model param done** — see §PHASE 7 |
 
 **Defects closed:** E2 (grid double-count), E7 (`eps_rcd` inert), V1 (`_animateCamera`),
-V2 (SBY corruption), V6 (inverted flow signs), V10 (SBY stale callback), V11 (null preset),
-V12 (viewpoint highlight stealing), V13 (particle speed saturation), V14 (scene dispose memory leak).
+V2 (SBY corruption), V6 (inverted flow signs), V10 (SBY stale callback), V11 (null preset).
 
 **Still open:** E3 efficiency · E4 clipping · E5 string voltage · E6 fault physics ·
-E9 SOC divergence · V5 filters inert · V7 cable termination · V8 hardcoded conductor telemetry.
+E9 SOC divergence · V5 filters inert · V7 cable termination · V8 hardcoded conductor telemetry ·
+V12 viewpoint highlight (→ Step 14) · **V13, V14 — new, see §PHASE 7**
 
 ---
 
