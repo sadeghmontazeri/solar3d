@@ -220,6 +220,8 @@ setTimeout(async () => {
         const rect = bar.getBoundingClientRect();
         const heightPx = rect.height;
         const heightCompliant = heightPx <= 55;
+        const topPx = rect.top;
+        const topCompliant = topPx >= 60 && topPx <= 120; // Docked directly beneath top-header, not floating in middle
 
         // Segments present
         const solar = document.getElementById('seg-solar');
@@ -246,11 +248,13 @@ setTimeout(async () => {
         return {
           heightPx,
           heightCompliant,
+          topPx,
+          topCompliant,
           allSegmentsPresent,
           readings: { pvP, batP, gridP, loadP },
           parsedNumbers: { pvNum, batNum, gridNum, loadNum },
           numbersValid,
-          passed: heightCompliant && allSegmentsPresent && numbersValid
+          passed: heightCompliant && topCompliant && allSegmentsPresent && numbersValid
         };
       })()`);
 

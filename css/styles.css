@@ -117,7 +117,7 @@ html, body {
   pointer-events: none;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
 }
 
 .interactive {
@@ -776,7 +776,7 @@ html, body {
    ========================================================================== */
 .left-cockpit-panel {
   position: absolute;
-  top: 126px;
+  top: 152px;
   right: 16px;
   bottom: 60px;
   width: 320px;
@@ -879,18 +879,23 @@ html, body {
 }
 
 .btn-toggle-cockpit {
+  position: absolute;
+  bottom: 16px;
+  right: 20px;
+  z-index: 20;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   background: rgba(30, 41, 59, 0.85);
   color: #f1f5f9;
   border: 1px solid rgba(56, 189, 248, 0.4);
-  padding: 6px 12px;
+  padding: 6px 14px;
   border-radius: 8px;
   font-size: 0.82rem;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
 .btn-toggle-cockpit:hover, .btn-toggle-cockpit.active {
@@ -2221,7 +2226,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
    ========================================================================== */
 .scenario-banner {
   position: absolute;
-  top: 130px;
+  top: 152px;
   left: 50%;
   transform: translateX(-50%);
   background: rgba(15, 23, 42, 0.92);
@@ -2317,8 +2322,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
     overflow-x: auto;
   }
   .telemetry-bar {
-    top: auto;
-    bottom: 60px;
     height: auto;
     min-height: 48px;
     padding: 4px 8px;
@@ -2334,7 +2337,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   }
   .left-cockpit-panel {
     width: 260px;
-    top: 110px;
+    top: 152px;
     bottom: 120px;
   }
   .calc-grid {
@@ -2362,7 +2365,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
    ========================================================================== */
 .viewport-quick-bar {
   position: absolute;
-  top: 126px;
+  top: 152px;
   left: 20px;
   display: flex;
   flex-direction: column;
