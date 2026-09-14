@@ -23,6 +23,102 @@
 
 'use strict';
 
+/**
+ * Procedural Studio Room Environment for Image-Based Lighting (IBL)
+ * Offline-safe (Zero network requests, procedural Three.js geometry)
+ */
+class RoomEnvironment extends THREE.Scene {
+  constructor() {
+    super();
+    const geometry = new THREE.BoxGeometry();
+    geometry.deleteAttribute('uv');
+
+    const roomMaterial = new THREE.MeshStandardMaterial({ side: THREE.BackSide });
+    const boxMaterial = new THREE.MeshStandardMaterial();
+
+    const mainLight = new THREE.PointLight(0xffffff, 5.0, 28, 2);
+    mainLight.position.set(0.418, 16.199, 0.300);
+    this.add(mainLight);
+
+    const room = new THREE.Mesh(geometry, roomMaterial);
+    room.position.set(-0.757, 13.219, 0.717);
+    room.scale.set(31.713, 28.305, 28.591);
+    this.add(room);
+
+    const box1 = new THREE.Mesh(geometry, boxMaterial);
+    box1.position.set(-10.906, 2.009, 1.846);
+    box1.rotation.set(0, -0.195, 0);
+    box1.scale.set(2.328, 7.905, 4.651);
+    this.add(box1);
+
+    const box2 = new THREE.Mesh(geometry, boxMaterial);
+    box2.position.set(-5.607, -0.754, -0.758);
+    box2.rotation.set(0, 0.994, 0);
+    box2.scale.set(1.970, 1.534, 3.955);
+    this.add(box2);
+
+    const box3 = new THREE.Mesh(geometry, boxMaterial);
+    box3.position.set(6.167, 0.857, 7.803);
+    box3.rotation.set(0, 0.561, 0);
+    box3.scale.set(3.927, 6.285, 3.687);
+    this.add(box3);
+
+    const box4 = new THREE.Mesh(geometry, boxMaterial);
+    box4.position.set(-2.017, 0.018, 6.124);
+    box4.rotation.set(0, 0.333, 0);
+    box4.scale.set(2.002, 4.566, 2.064);
+    this.add(box4);
+
+    const box5 = new THREE.Mesh(geometry, boxMaterial);
+    box5.position.set(2.291, -0.756, -2.621);
+    box5.rotation.set(0, -0.286, 0);
+    box5.scale.set(1.546, 1.552, 1.496);
+    this.add(box5);
+
+    const box6 = new THREE.Mesh(geometry, boxMaterial);
+    box6.position.set(-2.193, -0.369, -5.547);
+    box6.rotation.set(0, 0.516, 0);
+    box6.scale.set(3.875, 3.487, 2.986);
+    this.add(box6);
+
+    const createAreaLightMaterial = (intensity) => {
+      const material = new THREE.MeshBasicMaterial();
+      material.color.setScalar(intensity);
+      return material;
+    };
+
+    const light1 = new THREE.Mesh(geometry, createAreaLightMaterial(50));
+    light1.position.set(-16.116, 14.37, 8.208);
+    light1.scale.set(0.1, 2.428, 2.739);
+    this.add(light1);
+
+    const light2 = new THREE.Mesh(geometry, createAreaLightMaterial(50));
+    light2.position.set(-16.109, 18.021, -8.207);
+    light2.scale.set(0.1, 2.425, 2.751);
+    this.add(light2);
+
+    const light3 = new THREE.Mesh(geometry, createAreaLightMaterial(17));
+    light3.position.set(14.904, 12.198, -1.832);
+    light3.scale.set(0.15, 4.265, 6.331);
+    this.add(light3);
+
+    const light4 = new THREE.Mesh(geometry, createAreaLightMaterial(43));
+    light4.position.set(-0.462, 8.89, 14.520);
+    light4.scale.set(4.38, 5.441, 0.088);
+    this.add(light4);
+
+    const light5 = new THREE.Mesh(geometry, createAreaLightMaterial(20));
+    light5.position.set(3.235, 11.486, -12.541);
+    light5.scale.set(2.5, 2.0, 0.1);
+    this.add(light5);
+
+    const light6 = new THREE.Mesh(geometry, createAreaLightMaterial(100));
+    light6.position.set(0.0, 20.0, 0.0);
+    light6.scale.set(1.0, 0.1, 1.0);
+    this.add(light6);
+  }
+}
+
 class HybridSolar3DScene {
   /**
    * @param {string|HTMLElement} container - DOM container id or element
@@ -178,6 +274,12 @@ class HybridSolar3DScene {
     // Helical Earth (PE) Stripe Texture
     this.peWireTexture = this._createPEStripeTexture();
 
+    // Powder-coat micro-surface bump texture for industrial metal sheet and switchgear
+    this.powderCoatTexture = this._createPowderCoatBumpTexture();
+
+    // Soft contact shadow / AO texture
+    this.contactShadowTexture = this._createContactShadowTexture();
+
     // Interactive Circuit Path Highlighting State
     this.highlightedCircuitMeshes = [];
     this.circuitGraph = {};
@@ -276,6 +378,24 @@ class HybridSolar3DScene {
     if (this.options.shadows) {
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    }
+
+    // 3b. Image-Based Lighting (IBL) via PMREMGenerator & Procedural RoomEnvironment
+    if (typeof THREE.PMREMGenerator !== 'undefined') {
+      try {
+        this.pmremGenerator = new THREE.PMREMGenerator(this.renderer);
+        this.pmremGenerator.compileEquirectangularShader();
+        const roomEnv = new RoomEnvironment();
+        const rt = this.pmremGenerator.fromScene(roomEnv, 0.04);
+        this.envTexture = rt.texture;
+        this.scene.environment = this.envTexture;
+        roomEnv.traverse(child => {
+          if (child.geometry) child.geometry.dispose();
+          if (child.material) child.material.dispose();
+        });
+      } catch (err) {
+        console.warn('[HybridSolar3DScene] IBL generation warning:', err);
+      }
     }
 
     this.containerElement.style.position = 'relative';
@@ -461,13 +581,88 @@ class HybridSolar3DScene {
     return texture;
   }
 
+  /**
+   * Generates micro-surface noise bump texture for powder-coated sheet metal & switchgear
+   */
+  _createPowderCoatBumpTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#808080';
+    ctx.fillRect(0, 0, 128, 128);
+    const imgData = ctx.getImageData(0, 0, 128, 128);
+    const data = imgData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      const noise = (Math.random() - 0.5) * 48;
+      const v = Math.min(255, Math.max(0, 128 + noise));
+      data[i] = v;
+      data[i + 1] = v;
+      data[i + 2] = v;
+      data[i + 3] = 255;
+    }
+    ctx.putImageData(imgData, 0, 0);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(8, 8);
+    return texture;
+  }
+
+  /**
+   * Generates procedural soft ambient occlusion / contact shadow texture
+   */
+  _createContactShadowTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+
+    const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+    grad.addColorStop(0, 'rgba(0, 0, 0, 0.85)');
+    grad.addColorStop(0.3, 'rgba(0, 0, 0, 0.55)');
+    grad.addColorStop(0.7, 'rgba(0, 0, 0, 0.15)');
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0.0)');
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 128, 128);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    return texture;
+  }
+
+  /**
+   * Adds a grounding contact shadow quad under or behind equipment
+   */
+  _addContactShadow(x, y, z, width, depth, onWall = false) {
+    if (!this.contactShadowTexture) {
+      this.contactShadowTexture = this._createContactShadowTexture();
+    }
+    const mat = new THREE.MeshBasicMaterial({
+      map: this.contactShadowTexture,
+      transparent: true,
+      opacity: 0.75,
+      depthWrite: false
+    });
+    const geo = new THREE.PlaneGeometry(width, depth);
+    const mesh = new THREE.Mesh(geo, mat);
+    if (!onWall) {
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.set(x, y, z);
+    } else {
+      mesh.position.set(x, y, z);
+    }
+    this.scene.add(mesh);
+    return mesh;
+  }
+
   // ==========================================
   // LIGHTING & ENVIRONMENT
   // ==========================================
 
   _setupLighting() {
-    // Ambient Light (soft cool daylight)
-    this.ambientLight = new THREE.AmbientLight(0xdbeafe, 0.65);
+    // Ambient Light (subtle cool daylight fill - reduced to allow IBL reflections and rich shadows)
+    this.ambientLight = new THREE.AmbientLight(0xdbeafe, 0.28);
     this.scene.add(this.ambientLight);
 
     // Directional Sun Light
@@ -485,8 +680,14 @@ class HybridSolar3DScene {
     this.sunLight.shadow.bias = -0.0005;
     this.scene.add(this.sunLight);
 
+    // Soft cool directional fill light to retain shadow detail without grey haze
+    const fillLight = new THREE.DirectionalLight(0xb0c4de, 0.40);
+    fillLight.position.set(-8, 6, -6);
+    this.scene.add(fillLight);
+    this.roomLights.push(fillLight);
+
     // Fill / technical room downlight
-    const roomDownlight = new THREE.PointLight(0x93c5fd, 0.8, 12);
+    const roomDownlight = new THREE.PointLight(0x93c5fd, 0.6, 12);
     roomDownlight.position.set(0, 4.2, -0.5);
     this.scene.add(roomDownlight);
     this.roomLights.push(roomDownlight);
@@ -596,6 +797,15 @@ class HybridSolar3DScene {
 
     // Technical Room Safety Sign on Wall
     this._createWallSign('CAUTION: 1000V DC / 230V AC DUAL SOURCE', -1.0, 4.2, -2.28);
+
+    // Grounding Contact Shadows (Lightweight Ambient Occlusion for visual grounding)
+    this._addContactShadow(1.2, 0.004, -1.8, 1.25, 0.95, false); // Battery rack on floor
+    this._addContactShadow(-1.0, 2.5, -2.285, 1.15, 1.45, true); // Inverter on wall
+    this._addContactShadow(-3.2, 2.4, -2.285, 0.90, 0.95, true); // DC Box on wall
+    this._addContactShadow(3.05, 2.4, -2.285, 0.85, 1.05, true); // MDB on wall
+    this._addContactShadow(4.05, 2.4, -2.285, 0.75, 1.05, true); // EPS on wall
+    this._addContactShadow(3.05, 1.2, -2.285, 0.40, 0.50, true); // CT Sensor on wall
+    this._addContactShadow(-0.5, 0.6, -2.285, 0.65, 0.18, true); // MET Earth bar on wall
   }
 
   _createWallSign(text, x, y, z) {
@@ -747,7 +957,9 @@ class HybridSolar3DScene {
     const boxMat = new THREE.MeshStandardMaterial({
       color: 0x334155,
       roughness: 0.45,
-      metalness: 0.2
+      metalness: 0.2,
+      bumpMap: this.powderCoatTexture,
+      bumpScale: 0.0025
     });
 
     const casingGroup = new THREE.Group();
@@ -1305,7 +1517,7 @@ class HybridSolar3DScene {
 
     const makeWire = (pts, radius, mat, name, desc) => {
       const curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.2);
-      const tubeGeo = new THREE.TubeGeometry(curve, 32, radius, 8, false);
+      const tubeGeo = new THREE.TubeGeometry(curve, 32, radius, 14, false);
       const tubeMesh = new THREE.Mesh(tubeGeo, mat);
       tubeMesh.userData = { type: 'INTERNAL_CONDUCTOR', name, desc };
       this.interactiveObjects.push(tubeMesh);
@@ -1472,7 +1684,9 @@ class HybridSolar3DScene {
     const bodyMat = new THREE.MeshStandardMaterial({
       color: 0xf8fafc,
       roughness: 0.25,
-      metalness: 0.35
+      metalness: 0.35,
+      bumpMap: this.powderCoatTexture,
+      bumpScale: 0.002
     });
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.92, 1.25, 0.26), bodyMat);
     body.castShadow = true;
@@ -1492,10 +1706,14 @@ class HybridSolar3DScene {
       invGroup.add(fin);
     }
 
-    // 3. Status Halo Ring (Multi-color LED circle on front face)
+    // 3. Status Halo Ring (Multi-color LED circle on front face with dynamic emissive glow)
     const haloGeo = new THREE.RingGeometry(0.15, 0.175, 32);
-    this.haloMat = new THREE.MeshBasicMaterial({
-      color: 0x38bdf8, // Normal generating cyan-blue
+    this.haloMat = new THREE.MeshStandardMaterial({
+      color: 0x38bdf8,
+      emissive: 0x0284c7,
+      emissiveIntensity: 1.8,
+      roughness: 0.2,
+      metalness: 0.1,
       side: THREE.DoubleSide
     });
     const haloMesh = new THREE.Mesh(haloGeo, this.haloMat);
@@ -1724,12 +1942,12 @@ class HybridSolar3DScene {
     bessGroup.add(rackFrame);
 
     // --- Master BMS Unit (Top Rack Slot, Y = 0.55) ---
-    const bms = new THREE.Mesh(new THREE.BoxGeometry(0.88, 0.22, 0.65), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
+    const bms = new THREE.Mesh(new THREE.BoxGeometry(0.88, 0.22, 0.65), new THREE.MeshStandardMaterial({ color: 0x1e293b, bumpMap: this.powderCoatTexture, bumpScale: 0.002 }));
     bms.position.set(0, 0.55, 0.03);
     bessGroup.add(bms);
 
-    // BMS Mini LCD Screen
-    const bmsScreen = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 0.08), new THREE.MeshBasicMaterial({ color: 0x0284c7 }));
+    // BMS Mini LCD Screen with active backlight glow
+    const bmsScreen = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 0.08), new THREE.MeshStandardMaterial({ color: 0x0284c7, emissive: 0x0284c7, emissiveIntensity: 1.2, roughness: 0.2 }));
     bmsScreen.position.set(-0.2, 0.55, 0.38);
     bessGroup.add(bmsScreen);
 
@@ -1740,7 +1958,7 @@ class HybridSolar3DScene {
       modGroup.position.set(0, my, 0.03);
 
       // Module Front Chassis
-      const modBody = new THREE.Mesh(new THREE.BoxGeometry(0.88, 0.32, 0.65), new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.3 }));
+      const modBody = new THREE.Mesh(new THREE.BoxGeometry(0.88, 0.32, 0.65), new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.3, bumpMap: this.powderCoatTexture, bumpScale: 0.002 }));
       modGroup.add(modBody);
 
       // Heavy-Duty Rack Handles (black steel)
@@ -1752,28 +1970,39 @@ class HybridSolar3DScene {
       });
 
       // Power Terminals (Positive RED, Negative BLACK)
-      const posTerm = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.04, 12), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
+      const posTerm = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.04, 12), new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.3 }));
       posTerm.rotation.x = Math.PI / 2;
       posTerm.position.set(0.24, 0.06, 0.36);
       modGroup.add(posTerm);
 
-      const negTerm = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.04, 12), new THREE.MeshStandardMaterial({ color: 0x18181b }));
+      const negTerm = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.04, 12), new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.3 }));
       negTerm.rotation.x = Math.PI / 2;
       negTerm.position.set(0.32, 0.06, 0.36);
       modGroup.add(negTerm);
 
-      // Dynamic 5-Segment SOC LED Bar (20%, 40%, 60%, 80%, 100%)
+      // Dynamic 5-Segment SOC LED Bar (20%, 40%, 60%, 80%, 100%) with active emissive glow
       const socSegments = [];
       for (let s = 0; s < 5; s++) {
-        const ledMat = new THREE.MeshBasicMaterial({ color: 0x22c55e });
+        const ledMat = new THREE.MeshStandardMaterial({
+          color: 0x22c55e,
+          emissive: 0x10b981,
+          emissiveIntensity: 1.8,
+          roughness: 0.2
+        });
         const led = new THREE.Mesh(new THREE.PlaneGeometry(0.025, 0.012), ledMat);
         led.position.set(-0.15 + s * 0.035, 0.06, 0.36);
         modGroup.add(led);
         socSegments.push(ledMat);
       }
 
-      // RUN LED (green) & ALARM LED (red)
-      const runLed = new THREE.Mesh(new THREE.PlaneGeometry(0.015, 0.015), new THREE.MeshBasicMaterial({ color: 0x22c55e }));
+      // RUN LED (green) with emissive glow
+      const runLedMat = new THREE.MeshStandardMaterial({
+        color: 0x22c55e,
+        emissive: 0x22c55e,
+        emissiveIntensity: 2.0,
+        roughness: 0.2
+      });
+      const runLed = new THREE.Mesh(new THREE.PlaneGeometry(0.015, 0.015), runLedMat);
       runLed.position.set(0.06, 0.06, 0.36);
       modGroup.add(runLed);
 
@@ -1903,7 +2132,7 @@ class HybridSolar3DScene {
    */
   _createDressedConductor(points, radius, colorHex, parentGroup, userData, isPE = false) {
     const curve = new THREE.CatmullRomCurve3(points, false, 'catmullrom', 0.08);
-    const tubeGeo = new THREE.TubeGeometry(curve, Math.max(24, points.length * 8), radius, 8, false);
+    const tubeGeo = new THREE.TubeGeometry(curve, Math.max(24, points.length * 8), radius, 14, false);
 
     let tubeMat;
     if (isPE) {
@@ -1963,7 +2192,13 @@ class HybridSolar3DScene {
 
     // --- 1. Industrial Sheet Steel Hollow Enclosure (5-Sided Cabinet with open front aperture) ---
     const t = 0.015;
-    const caseMat = new THREE.MeshStandardMaterial({ color: 0xdfe4ea, metalness: 0.25, roughness: 0.45 });
+    const caseMat = new THREE.MeshStandardMaterial({
+      color: 0xdfe4ea,
+      metalness: 0.25,
+      roughness: 0.45,
+      bumpMap: this.powderCoatTexture,
+      bumpScale: 0.0025
+    });
     const casingGroup = new THREE.Group();
 
     // 1a. Back Wall
@@ -2180,14 +2415,37 @@ class HybridSolar3DScene {
     meterScreen.position.set(0, 0.015, 0.035);
     meterGroup.add(meterScreen);
 
-    // Pulsing Red Impulse LED (1000 imp/kWh)
-    this.meterImpulseLED = new THREE.Mesh(new THREE.CircleGeometry(0.002, 8), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+    // Pulsing Red Impulse LED (1000 imp/kWh) with active emissive glow
+    this.meterImpulseLEDMat = new THREE.MeshStandardMaterial({
+      color: 0xef4444,
+      emissive: 0xef4444,
+      emissiveIntensity: 2.5,
+      roughness: 0.2
+    });
+    this.meterImpulseLED = new THREE.Mesh(new THREE.CircleGeometry(0.0025, 12), this.meterImpulseLEDMat);
     this.meterImpulseLED.position.set(-0.01, -0.025, 0.035);
     meterGroup.add(this.meterImpulseLED);
 
     meterBody.userData = { id: 'smart_meter', type: 'METER', name: 'SDM230 Smart Energy Meter (Bi-Directional RS485 Modbus)' };
     this.interactiveObjects.push(meterBody);
     mdbGroup.add(meterGroup);
+
+    // Modular DIN Pilot Indicator (Grid Incomer Live Pilot Lamp)
+    const pilotGridGroup = new THREE.Group();
+    pilotGridGroup.position.set(-0.045, 0.16, 0.025);
+    const pilotGridBody = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.085, 0.065), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.3 }));
+    pilotGridGroup.add(pilotGridBody);
+    this.pilotGridMat = new THREE.MeshStandardMaterial({
+      color: 0x22c55e,
+      emissive: 0x22c55e,
+      emissiveIntensity: 2.2,
+      roughness: 0.2
+    });
+    const pilotGridLens = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.008, 16), this.pilotGridMat);
+    pilotGridLens.rotation.x = Math.PI / 2;
+    pilotGridLens.position.set(0, 0.02, 0.034);
+    pilotGridGroup.add(pilotGridLens);
+    mdbGroup.add(pilotGridGroup);
 
     // FUSE_VT: Voltage Tap 1P 2A Fuse Holder
     const fuseVtGroup = new THREE.Group();
@@ -2222,10 +2480,15 @@ class HybridSolar3DScene {
     const spdBody = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.090, 0.065), new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3 }));
     spdGroup.add(spdBody);
 
-    // 2x Mechanical Inspection Status Flags (Emerald Green = Healthy, Safety Red = Tripped)
+    // 2x Mechanical Inspection Status Flags (Emerald Green = Healthy, Safety Red = Tripped) with emissive glow
     this.acSpdFlags = [];
     [-0.009, 0.009].forEach(fx => {
-      const fMat = new THREE.MeshBasicMaterial({ color: 0x22c55e });
+      const fMat = new THREE.MeshStandardMaterial({
+        color: 0x22c55e,
+        emissive: 0x16a34a,
+        emissiveIntensity: 1.2,
+        roughness: 0.3
+      });
       const fMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.012, 0.016), fMat);
       fMesh.position.set(fx, 0.02, 0.034);
       spdGroup.add(fMesh);
@@ -2264,6 +2527,23 @@ class HybridSolar3DScene {
     this.interactiveObjects.push(q2Lever);
     this.switchgear['inv_grid_mcb'] = { type: 'lever', object: q2LeverGroup, currentAngle: 0.45, targetAngle: 0.45, state: true };
     mdbGroup.add(q2Group);
+
+    // Modular DIN Pilot Indicator (Inverter AC Live Pilot Lamp)
+    const pilotInvGroup = new THREE.Group();
+    pilotInvGroup.position.set(0.025, -0.16, 0.025);
+    const pilotInvBody = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.085, 0.065), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.3 }));
+    pilotInvGroup.add(pilotInvBody);
+    this.pilotInvMat = new THREE.MeshStandardMaterial({
+      color: 0x38bdf8,
+      emissive: 0x38bdf8,
+      emissiveIntensity: 2.2,
+      roughness: 0.2
+    });
+    const pilotInvLens = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.008, 16), this.pilotInvMat);
+    pilotInvLens.rotation.x = Math.PI / 2;
+    pilotInvLens.position.set(0, 0.02, 0.034);
+    pilotInvGroup.add(pilotInvLens);
+    mdbGroup.add(pilotInvGroup);
 
     // Non-Critical Load Branch Breakers (Q3 16A Sockets, Q4 10A Lighting, Q5 20A HVAC)
     const makeBranchMCB = (bx, name, id, amp) => {
@@ -2516,7 +2796,13 @@ class HybridSolar3DScene {
 
     // --- 1. EPS Sheet Steel Hollow Enclosure (5-Sided Cabinet with open front aperture) ---
     const t = 0.015;
-    const caseMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.35, roughness: 0.4 });
+    const caseMat = new THREE.MeshStandardMaterial({
+      color: 0x1e293b,
+      metalness: 0.35,
+      roughness: 0.4,
+      bumpMap: this.powderCoatTexture,
+      bumpScale: 0.0025
+    });
     const casingGroup = new THREE.Group();
 
     // 1a. Back Wall
@@ -2774,6 +3060,23 @@ class HybridSolar3DScene {
     this.switchgear['qo_mcb'] = { type: 'lever', object: qoLeverGroup, currentAngle: 0.45, targetAngle: 0.45, state: true };
     this.switchgear['eps_incomer_mcb'] = this.switchgear['qo_mcb'];
     epsGroup.add(qoGroup);
+
+    // Modular DIN Pilot Indicator (EPS Bus Live Pilot Lamp)
+    const pilotEpsGroup = new THREE.Group();
+    pilotEpsGroup.position.set(0.10, 0.16, 0.025);
+    const pilotEpsBody = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.085, 0.065), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.3 }));
+    pilotEpsGroup.add(pilotEpsBody);
+    this.pilotEpsMat = new THREE.MeshStandardMaterial({
+      color: 0xd946ef,
+      emissive: 0xd946ef,
+      emissiveIntensity: 2.2,
+      roughness: 0.2
+    });
+    const pilotEpsLens = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.008, 16), this.pilotEpsMat);
+    pilotEpsLens.rotation.x = Math.PI / 2;
+    pilotEpsLens.position.set(0, 0.02, 0.034);
+    pilotEpsGroup.add(pilotEpsLens);
+    epsGroup.add(pilotEpsGroup);
 
     // N_BAR_EPS: Dedicated Isolated Neutral Busbar (N-EPS - STRICTLY ISOLATED FROM N_GRID)
     const nEpsBarGroup = new THREE.Group();
@@ -3509,7 +3812,7 @@ class HybridSolar3DScene {
     // Build 3D Tube Meshes along CatmullRom curves
     for (const [key, cfg] of Object.entries(cableConfigs)) {
       const curve = new THREE.CatmullRomCurve3(cfg.points, false, 'catmullrom', 0.15);
-      const tubeGeo = new THREE.TubeGeometry(curve, 64, cfg.radius, 8, false);
+      const tubeGeo = new THREE.TubeGeometry(curve, 64, cfg.radius, 14, false);
       const tubeMat = new THREE.MeshStandardMaterial({
         color: cfg.color,
         roughness: 0.4,
@@ -3754,25 +4057,99 @@ class HybridSolar3DScene {
       totalKWh: 4892.4 + (Date.now() % 100000) / 10000
     });
 
-    // Also update Status Halo Ring Color
+    // Synchronously update physical indicators, pilot lamps and halo ring
+    this.updateIndicators(data);
+  }
+
+  /**
+   * Updates all physical LED indicators, pilot lights, and halo ring
+   * @param {Object} data - Telemetry and electrical state
+   */
+  updateIndicators(data = {}) {
+    const mode = data.mode || 'NORMAL';
+    const isOff = mode === 'OFF';
+
+    // 1. Inverter Status Halo Ring
     if (this.haloMat) {
-      if (mode === 'EPS') this.haloMat.color.setHex(0xf59e0b); // Orange
-      else if (mode === 'FAULT') this.haloMat.color.setHex(0xef4444); // Red
-      else this.haloMat.color.setHex(0x38bdf8); // Normal Cyan
+      if (isOff) {
+        this.haloMat.color.setHex(0x334155);
+        this.haloMat.emissive.setHex(0x0f172a);
+        this.haloMat.emissiveIntensity = 0.05;
+      } else if (mode === 'EPS') {
+        this.haloMat.color.setHex(0xf59e0b);
+        this.haloMat.emissive.setHex(0xf59e0b);
+        this.haloMat.emissiveIntensity = 2.0;
+      } else if (mode === 'FAULT') {
+        this.haloMat.color.setHex(0xef4444);
+        this.haloMat.emissive.setHex(0xef4444);
+        this.haloMat.emissiveIntensity = 2.5;
+      } else {
+        // Normal / GRID
+        this.haloMat.color.setHex(0x0284c7);
+        this.haloMat.emissive.setHex(0x38bdf8);
+        this.haloMat.emissiveIntensity = 1.8;
+      }
     }
 
-    // Update battery module physical SOC LEDs
+    // 2. Battery Storage SOC LED Bars & BMS Run LED
     if (this.batteryModules && this.batteryModules.length > 0) {
+      const soc = data.batSoc !== undefined ? data.batSoc : 85;
       const activeSegs = Math.round((soc / 100) * 5);
       this.batteryModules.forEach(mod => {
-        mod.socSegments.forEach((segMat, idx) => {
-          if (idx < activeSegs) {
-            segMat.color.setHex(0x22c55e); // Bright green
-          } else {
-            segMat.color.setHex(0x1e293b); // Off
-          }
-        });
+        if (mod.socSegments) {
+          mod.socSegments.forEach((segMat, idx) => {
+            if (idx < activeSegs) {
+              segMat.color.setHex(0x22c55e);
+              if (segMat.emissive) {
+                segMat.emissive.setHex(0x22c55e);
+                segMat.emissiveIntensity = 2.0;
+              }
+            } else {
+              segMat.color.setHex(0x0f172a);
+              if (segMat.emissive) {
+                segMat.emissive.setHex(0x022c22);
+                segMat.emissiveIntensity = 0.05;
+              }
+            }
+          });
+        }
+        if (mod.runLed && mod.runLed.material) {
+          mod.runLed.material.emissiveIntensity = !isOff ? 2.0 : 0.05;
+        }
       });
+    }
+
+    // 3. MDB Smart Meter Impulse LED (Pulsing relative to grid power)
+    if (this.meterImpulseLEDMat) {
+      const gridP = Math.abs(data.gridPower || 0);
+      if (gridP > 10) {
+        const pulseRate = Math.min(6, Math.max(0.8, gridP / 600));
+        const isOn = (Math.sin(Date.now() / 1000 * pulseRate * Math.PI * 2) > 0.1);
+        this.meterImpulseLEDMat.emissiveIntensity = isOn ? 2.8 : 0.08;
+      } else {
+        this.meterImpulseLEDMat.emissiveIntensity = 0.05;
+      }
+    }
+
+    // 4. MDB Live Grid Pilot Indicator (Green)
+    if (this.pilotGridMat) {
+      const isGridLive = (data.gridVolt !== undefined ? data.gridVolt > 80 : true);
+      this.pilotGridMat.emissiveIntensity = isGridLive ? 2.2 : 0.05;
+      this.pilotGridMat.color.setHex(isGridLive ? 0x22c55e : 0x064e3b);
+    }
+
+    // 5. MDB Inverter AC Live Pilot Indicator (Cyan)
+    if (this.pilotInvMat) {
+      const isInvLive = !isOff;
+      this.pilotInvMat.emissiveIntensity = isInvLive ? 2.2 : 0.05;
+      this.pilotInvMat.color.setHex(isInvLive ? 0x38bdf8 : 0x0c4a6e);
+    }
+
+    // 6. EPS Board Live Pilot Indicator (Magenta)
+    if (this.pilotEpsMat) {
+      const isEpsLive = (data.epsPower !== undefined && data.epsPower > 0) || mode === 'EPS' || (mode !== 'OFF' && (data.gridVolt || 0) > 80);
+      this.pilotEpsMat.emissiveIntensity = isEpsLive ? 2.2 : 0.05;
+      this.pilotEpsMat.color.setHex(isEpsLive ? 0xd946ef : 0x4a044e);
     }
   }
 
@@ -4734,6 +5111,32 @@ class HybridSolar3DScene {
     this.circuitGraph = {};
     this.highlightedCircuitMeshes = [];
     this.eventListeners = {};
+
+    // 8b. Dispose procedural, IBL and canvas textures
+    if (this.envTexture) {
+      if (typeof this.envTexture.dispose === 'function') this.envTexture.dispose();
+      this.envTexture = null;
+    }
+    if (this.pmremGenerator) {
+      if (typeof this.pmremGenerator.dispose === 'function') this.pmremGenerator.dispose();
+      this.pmremGenerator = null;
+    }
+    if (this.powderCoatTexture) {
+      if (typeof this.powderCoatTexture.dispose === 'function') this.powderCoatTexture.dispose();
+      this.powderCoatTexture = null;
+    }
+    if (this.contactShadowTexture) {
+      if (typeof this.contactShadowTexture.dispose === 'function') this.contactShadowTexture.dispose();
+      this.contactShadowTexture = null;
+    }
+    if (this.oledTexture) {
+      if (typeof this.oledTexture.dispose === 'function') this.oledTexture.dispose();
+      this.oledTexture = null;
+    }
+    if (this.meterTexture) {
+      if (typeof this.meterTexture.dispose === 'function') this.meterTexture.dispose();
+      this.meterTexture = null;
+    }
 
     // 9. Call this.renderer.dispose()
     if (this.renderer) {
