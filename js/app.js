@@ -252,6 +252,9 @@
   // ============================================================================
   let sbyTransferGeneration = 0;
   const state = {
+    activeProfileId: 'profile-hyb-1p-5kw-v1',
+    activeProfile: null,
+
     // Environmental & System Inputs
     irradiance: 850,       // W/m2 (0 - 1200)
     temperature: 25,       // °C (-20 to 50)
@@ -329,7 +332,7 @@
       failures: state.failures
     };
 
-    const activeProfile = window.SystemProfiles?.get('profile-hyb-1p-5kw-v1');
+    const activeProfile = state.activeProfile || (window.SystemProfiles?.get(state.activeProfileId || 'profile-hyb-1p-5kw-v1'));
     const result = (typeof computePowerModel === 'function')
       ? computePowerModel(input, activeProfile)
       : (window.computePowerModel ? window.computePowerModel(input, activeProfile) : null);
@@ -366,7 +369,11 @@
 
     // Update battery SOC integration
     if (batPower !== 0) {
-      const deltaSOC = (batPower / (5120 * 3600)) * 100 * 0.1;
+      const batWh = activeProfile?.equipment?.batteryBank?.capacity_Wh
+        ?? activeProfile?.equipment?.batteryStorage?.bankRatings?.energyTotal_Wh
+        ?? activeProfile?.systemRatings?.batteryNominalCapacity_Wh
+        ?? 5120;
+      const deltaSOC = (batPower / (batWh * 3600)) * 100 * 0.1;
       state.batterySOC = Math.max(10, Math.min(100, state.batterySOC + deltaSOC));
     }
 
@@ -438,36 +445,147 @@
   // 4. UI DOM BINDINGS & CONTROLLER
   // ============================================================================
   function updateHUDView() {
-    // 1. PV Badge
+    // 1. Solar (خورشیدی) Segment
     const pvP = document.getElementById('hud-pv-p');
     const pvV = document.getElementById('hud-pv-v');
     const pvI = document.getElementById('hud-pv-i');
     const pvDot = document.getElementById('hud-pv-dot');
-    if (pvP) pvP.textContent = state.telemetry.pv.p;
-    if (pvV) pvV.textContent = state.telemetry.pv.v + ' V';
-    if (pvI) pvI.textContent = state.telemetry.pv.i + ' A';
+    if (pvP) pvP.textContent = Math.round(state.telemetry.pv.p);
+    if (pvV) pvV.textContent = (state.telemetry.pv.v || 0) + ' V';
+    if (pvI) pvI.textContent = (state.telemetry.pv.i || 0) + ' A';
     if (pvDot) {
-      pvDot.className = 'badge-status-dot ' + (state.telemetry.pv.p > 50 ? '' : 'offline');
+      if (state.failures.pv_string_open) {
+        pvDot.className = 'badge-status-dot danger';
+      } else if (state.telemetry.pv.p > 50) {
+        pvDot.className = 'badge-status-dot active';
+      } else {
+        pvDot.className = 'badge-status-dot offline';
+      }
     }
 
-    // 2. Battery Badge
+    // 2. Battery (ذخیره‌ساز) Segment
     const batP = document.getElementById('hud-bat-p');
     const batSoc = document.getElementById('hud-bat-soc');
     const batV = document.getElementById('hud-bat-v');
     const batState = document.getElementById('hud-bat-state');
     const batDot = document.getElementById('hud-bat-dot');
+    const bp = Math.round(state.telemetry.battery.p);
     if (batP) {
-      const p = state.telemetry.battery.p;
-      batP.textContent = (p >= 0 ? '+' : '') + p;
+      batP.textContent = (bp >= 0 ? '+' : '') + bp;
     }
-    if (batSoc) batSoc.textContent = Math.round(state.batterySOC) + '%';
-    if (batV) batV.textContent = state.telemetry.battery.v + ' V';
-    if (batState) batState.textContent = state.telemetry.battery.state;
+    const socRound = Math.round(state.batterySOC);
+    if (batSoc) batSoc.textContent = socRound + '%';
+    if (batV) batV.textContent = (state.telemetry.battery.v || 0) + ' V';
+    if (batState) {
+      let stateLabel = 'آماده‌به‌کار';
+      if (socRound <= 10 && bp <= 0) {
+        stateLabel = 'تخلیه کامل';
+      } else if (bp > 50) {
+        stateLabel = 'در حال شارژ';
+      } else if (bp < -50) {
+        stateLabel = 'در حال دشارژ';
+      } else if (state.failures.battery_thermal || state.failures.bms_comm_fault) {
+        stateLabel = 'خطای BMS';
+      } else if (state.breakers.qb_battery === false) {
+        stateLabel = 'قطع کلید QB';
+      }
+      batState.textContent = stateLabel;
+    }
     if (batDot) {
-      batDot.className = 'badge-status-dot ' + (state.failures.battery_thermal ? 'danger' : '');
+      if (state.failures.battery_thermal || state.failures.bms_comm_fault) {
+        batDot.className = 'badge-status-dot danger';
+      } else if (socRound <= 15) {
+        batDot.className = 'badge-status-dot warning';
+      } else if (Math.abs(bp) > 50) {
+        batDot.className = 'badge-status-dot active';
+      } else {
+        batDot.className = 'badge-status-dot';
+      }
     }
 
-    // 3. Inverter Badge
+    // 3. Grid (شبکه سراسری) Segment
+    const gridP = document.getElementById('hud-grid-p');
+    const gridV = document.getElementById('hud-grid-v');
+    const gridDirection = document.getElementById('hud-grid-direction');
+    const gridDot = document.getElementById('hud-grid-dot');
+    const gp = Math.round(state.telemetry.grid.p);
+    if (gridP) {
+      gridP.textContent = (gp >= 0 ? '+' : '') + gp;
+    }
+    if (gridV) gridV.textContent = (state.telemetry.grid.v || 0) + ' V';
+    if (gridDirection) {
+      if (state.telemetry.grid.isBlackout || state.breakers.q_grid === false) {
+        gridDirection.textContent = 'قطع شبکه';
+      } else if (gp > 50) {
+        gridDirection.textContent = 'واردات از شبکه';
+      } else if (gp < -50) {
+        gridDirection.textContent = 'صادرات به شبکه';
+      } else {
+        gridDirection.textContent = 'شناور (تزریق صفر)';
+      }
+    }
+    if (gridDot) {
+      if (state.telemetry.grid.isBlackout || state.breakers.q_grid === false) {
+        gridDot.className = 'badge-status-dot danger';
+      } else if (Math.abs(gp) > 50) {
+        gridDot.className = 'badge-status-dot active';
+      } else {
+        gridDot.className = 'badge-status-dot';
+      }
+    }
+
+    // 4. Loads (بارهای مصرفی) Segment
+    const loadP = document.getElementById('hud-load-p');
+    const epsP = document.getElementById('hud-eps-p');
+    const epsV = document.getElementById('hud-eps-v');
+    const epsStatus = document.getElementById('hud-eps-status');
+    const epsDot = document.getElementById('hud-eps-dot');
+    const loadStatus = document.getElementById('hud-load-status');
+    const normalP = Math.round(state.telemetry.normalLoad.p || 0);
+    const epsPVal = Math.round(state.telemetry.eps.p || 0);
+    const totalLoadP = normalP + epsPVal;
+
+    if (loadP) loadP.textContent = totalLoadP;
+    if (epsP) epsP.textContent = epsPVal;
+    if (epsV) epsV.textContent = (state.telemetry.eps.v || 230) + ' V';
+    if (loadStatus) {
+      loadStatus.textContent = state.telemetry.normalLoad.isPowered ? 'عادی: برق‌دار' : 'عادی: بی‌برق';
+    }
+    if (epsStatus) {
+      epsStatus.textContent = state.telemetry.eps.isPowered ? 'پایدار' : 'قطع';
+    }
+    if (epsDot) {
+      epsDot.className = 'badge-status-dot ' + (state.telemetry.eps.isPowered ? 'active' : 'danger');
+    }
+    const segLoads = document.getElementById('seg-loads');
+    if (segLoads) {
+      segLoads.title = `مجموع بار مصرفی: ${totalLoadP} وات (عادی: ${normalP}W | اضطراری EPS: ${epsPVal}W) — کلیک برای جزئیات`;
+    }
+
+    // 5. SBY Changeover Switch Badge
+    const sbyPosEl = document.getElementById('hud-sby-pos');
+    const sbyDescEl = document.getElementById('hud-sby-desc');
+    const sbyDotEl = document.getElementById('hud-sby-dot');
+    if (sbyPosEl) {
+      if (state.sbyPosition === 'I') {
+        sbyPosEl.textContent = 'I (اینورتر)';
+        sbyPosEl.style.color = 'var(--eps-magenta)';
+        if (sbyDescEl) sbyDescEl.textContent = 'خروجی اینورتر EPS';
+        if (sbyDotEl) sbyDotEl.className = 'badge-status-dot active';
+      } else if (state.sbyPosition === '0') {
+        sbyPosEl.textContent = '0 (قطع)';
+        sbyPosEl.style.color = 'var(--alert-red)';
+        if (sbyDescEl) sbyDescEl.textContent = 'ایزولاسیون کامل / خاموش';
+        if (sbyDotEl) sbyDotEl.className = 'badge-status-dot danger';
+      } else if (state.sbyPosition === 'II') {
+        sbyPosEl.textContent = 'II (بای‌پاس)';
+        sbyPosEl.style.color = 'var(--grid-blue)';
+        if (sbyDescEl) sbyDescEl.textContent = 'تغذیه مستقیم از شبکه';
+        if (sbyDotEl) sbyDotEl.className = 'badge-status-dot active';
+      }
+    }
+
+    // 6. Inverter Telemetry (Backward Compatibility)
     const invP = document.getElementById('hud-inv-p');
     const invFreq = document.getElementById('hud-inv-freq');
     const invEff = document.getElementById('hud-inv-eff');
@@ -478,46 +596,8 @@
     if (invEff) invEff.textContent = state.telemetry.inverter.efficiency + '%';
     if (invStatus) invStatus.textContent = state.telemetry.inverter.status;
     if (invDot) {
-      invDot.className = 'badge-status-dot ' + (state.telemetry.inverter.freq > 0 ? '' : 'offline');
+      invDot.className = 'badge-status-dot ' + (state.telemetry.inverter.freq > 0 ? 'active' : 'offline');
     }
-
-    // 4. Grid Badge
-    const gridP = document.getElementById('hud-grid-p');
-    const gridV = document.getElementById('hud-grid-v');
-    const gridDirection = document.getElementById('hud-grid-direction');
-    const gridDot = document.getElementById('hud-grid-dot');
-    if (gridP) {
-      const p = state.telemetry.grid.p;
-      gridP.textContent = (p >= 0 ? '+' : '') + p;
-    }
-    if (gridV) gridV.textContent = state.telemetry.grid.v + ' V';
-    if (gridDirection) {
-      if (state.telemetry.grid.isBlackout) gridDirection.textContent = 'قطعی شبکه سراسری';
-      else if (state.telemetry.grid.p > 50) gridDirection.textContent = 'واردات از شبکه';
-      else if (state.telemetry.grid.p < -50) gridDirection.textContent = 'صادرات به شبکه';
-      else gridDirection.textContent = 'تزریق صفر (شناور)';
-    }
-    if (gridDot) {
-      gridDot.className = 'badge-status-dot ' + (state.telemetry.grid.isBlackout ? 'danger' : '');
-    }
-
-    // 5. EPS Loads Badge
-    const epsP = document.getElementById('hud-eps-p');
-    const epsV = document.getElementById('hud-eps-v');
-    const epsStatus = document.getElementById('hud-eps-status');
-    const epsDot = document.getElementById('hud-eps-dot');
-    if (epsP) epsP.textContent = state.telemetry.eps.p;
-    if (epsV) epsV.textContent = state.telemetry.eps.v + ' V';
-    if (epsStatus) epsStatus.textContent = state.telemetry.eps.isPowered ? 'پایدار (تغذیه فعال)' : 'قطع / خاموش';
-    if (epsDot) {
-      epsDot.className = 'badge-status-dot ' + (state.telemetry.eps.isPowered ? '' : 'danger');
-    }
-
-    // 6. Normal Load Badge
-    const loadP = document.getElementById('hud-load-p');
-    const loadStatus = document.getElementById('hud-load-status');
-    if (loadP) loadP.textContent = state.telemetry.normalLoad.p;
-    if (loadStatus) loadStatus.textContent = state.telemetry.normalLoad.isPowered ? 'برق‌دار' : 'بی‌برق (خاموش)';
 
     // 7. Dynamic Inspector Feed Summary
     if (state.activeInspectorComponent) {
@@ -642,8 +722,8 @@
       });
     });
 
-    // Camera Viewpoint Buttons
-    const camButtons = document.querySelectorAll('.btn-viewpoint');
+    // Camera Viewpoint Buttons (V12 Fix: genuine viewpoints only)
+    const camButtons = document.querySelectorAll('.btn-viewpoint[data-viewpoint]');
     const presetMap = {
       overview: 'OVERVIEW',
       pv: 'ROOFTOP',
@@ -810,6 +890,95 @@
         state.currentFilter = filter;
         if (window.SLDSchematic) {
           window.SLDSchematic.setFlowFilter(filter);
+        }
+      });
+    });
+
+    // Telemetry Strip Segment & SBY Pill Interactions (Step 13)
+    const hudSbyBadge = document.getElementById('hud-sby-badge');
+    if (hudSbyBadge && !hudSbyBadge._bound) {
+      hudSbyBadge._bound = true;
+      hudSbyBadge.addEventListener('click', () => {
+        const cur = state.sbyPosition || 'I';
+        const next = cur === 'I' ? '0' : (cur === '0' ? 'II' : 'I');
+        if (window.AppOrchestrator?.onSbyStateChanged) {
+          window.AppOrchestrator.onSbyStateChanged(next, 'hud');
+        } else {
+          state.sbyPosition = next;
+          sound.playSbySwitch(next);
+          computeElectricalState();
+          updateHUDView();
+        }
+      });
+      hudSbyBadge.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          hudSbyBadge.click();
+        }
+      });
+    }
+
+    const segMap = {
+      'seg-solar': 'solar_arrays',
+      'seg-battery': 'battery_bank',
+      'seg-grid': 'main_distribution_board',
+      'seg-loads': 'essential_db'
+    };
+    Object.entries(segMap).forEach(([id, compId]) => {
+      const el = document.getElementById(id);
+      if (el && !el._bound) {
+        el._bound = true;
+        el.addEventListener('click', () => {
+          sound.playClick();
+          if (typeof renderInspectorComponent === 'function') {
+            renderInspectorComponent(compId, true);
+          }
+        });
+        el.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            el.click();
+          }
+        });
+      }
+    });
+
+    // Cockpit Drawer Collapse/Expand (Step 14)
+    const cockpitPanel = document.getElementById('left-cockpit-panel');
+    const btnToggleCockpit = document.getElementById('btn-toggle-cockpit');
+    const btnToggleCockpitHeader = document.getElementById('btn-toggle-cockpit-header');
+    const btnCloseCockpit = document.getElementById('btn-close-cockpit');
+
+    const toggleCockpit = (forceState) => {
+      sound.playClick();
+      if (!cockpitPanel) return;
+      const isCurrentlyCollapsed = cockpitPanel.classList.contains('collapsed') || cockpitPanel.classList.contains('drawer-collapsed');
+      const targetCollapsed = forceState !== undefined ? !forceState : !isCurrentlyCollapsed;
+      if (targetCollapsed) {
+        cockpitPanel.classList.add('collapsed');
+        cockpitPanel.classList.add('drawer-collapsed');
+        if (btnToggleCockpit) btnToggleCockpit.classList.remove('active');
+        if (btnToggleCockpitHeader) btnToggleCockpitHeader.classList.remove('active');
+      } else {
+        cockpitPanel.classList.remove('collapsed');
+        cockpitPanel.classList.remove('drawer-collapsed');
+        if (btnToggleCockpit) btnToggleCockpit.classList.add('active');
+        if (btnToggleCockpitHeader) btnToggleCockpitHeader.classList.add('active');
+      }
+    };
+
+    if (btnToggleCockpit) btnToggleCockpit.addEventListener('click', () => toggleCockpit());
+    if (btnToggleCockpitHeader) btnToggleCockpitHeader.addEventListener('click', () => toggleCockpit());
+    if (btnCloseCockpit) btnCloseCockpit.addEventListener('click', () => toggleCockpit(false));
+
+    // Cockpit Accordion Sections (Scenario, Switching, Faults)
+    const accordionHeaders = document.querySelectorAll('.cockpit-accordion-header');
+    accordionHeaders.forEach(header => {
+      header.addEventListener('click', () => {
+        sound.playClick();
+        const item = header.closest('.cockpit-accordion-item');
+        if (item) {
+          item.classList.toggle('active');
         }
       });
     });
@@ -2117,6 +2286,61 @@
         openWhyModalForCurrentComponent('hybrid_inverter');
       });
     }
+
+    // Profile Switcher Dropdown (Phase 7 Steps 15a/b/d)
+    const selectProfile = document.getElementById('select-system-profile');
+    if (selectProfile) {
+      selectProfile.addEventListener('change', (e) => {
+        sound.playClick();
+        window.AppOrchestrator.switchSystemProfile(e.target.value);
+      });
+    }
+
+    // Tools & References Dropdown Orchestration
+    const toolsToggleBtn = document.getElementById('btn-tools-menu-toggle');
+    const toolsMenuContent = document.getElementById('tools-menu-content');
+    const toolsDropdownWrapper = document.getElementById('header-tools-dropdown');
+
+    if (toolsToggleBtn && toolsMenuContent) {
+      toolsToggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        sound.playClick();
+        const isOpen = toolsMenuContent.classList.toggle('open');
+        if (toolsDropdownWrapper) {
+          toolsDropdownWrapper.classList.toggle('open', isOpen);
+        }
+      });
+
+      // Close dropdown when any menu item is clicked
+      const menuItems = toolsMenuContent.querySelectorAll('.tools-menu-item');
+      menuItems.forEach((item) => {
+        item.addEventListener('click', () => {
+          toolsMenuContent.classList.remove('open');
+          if (toolsDropdownWrapper) {
+            toolsDropdownWrapper.classList.remove('open');
+          }
+        });
+      });
+
+      // Close dropdown when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!toolsMenuContent.classList.contains('open')) return;
+        if (toolsDropdownWrapper && !toolsDropdownWrapper.contains(e.target)) {
+          toolsMenuContent.classList.remove('open');
+          toolsDropdownWrapper.classList.remove('open');
+        }
+      });
+
+      // Close on Escape key
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && toolsMenuContent.classList.contains('open')) {
+          toolsMenuContent.classList.remove('open');
+          if (toolsDropdownWrapper) {
+            toolsDropdownWrapper.classList.remove('open');
+          }
+        }
+      });
+    }
   }
 
   // ============================================================================
@@ -2506,6 +2730,174 @@
     }
   }
 
+  // ============================================================================
+  // 17. PROFILE SWITCHER & 3D SCENE EVENT WIRING (PHASE 7 STEP 15d)
+  // ============================================================================
+  function wire3DSceneEvents(scene) {
+    if (!scene || typeof scene.on !== 'function') return;
+
+    scene.on('switchChange', (data) => {
+      if (!data || !data.id) return;
+      sound.playClick();
+      if (data.id === 'sby_switch') {
+        window.AppOrchestrator.onSbyStateChanged(data.state, '3d');
+      } else {
+        window.AppOrchestrator.onBreakerStateChanged(data.id, data.state, '3d');
+      }
+      if (typeof refreshDrawerOperationState === 'function') {
+        refreshDrawerOperationState();
+      }
+    });
+
+    let lastSelectionTime = 0;
+    let lastSelectionKey = null;
+
+    const on3DSelect = (data) => {
+      if (!data) return;
+      const now = performance.now();
+      const key = (data.id || '') + '_' + (data.action || '') + '_' + (data.name || '');
+      if (key && key === lastSelectionKey && (now - lastSelectionTime < 150)) {
+        return;
+      }
+      lastSelectionTime = now;
+      lastSelectionKey = key;
+      if (sound && typeof sound.playClick === 'function') sound.playClick();
+      if (typeof handleObjectSelected === 'function') {
+        handleObjectSelected(data);
+      }
+    };
+
+    scene.on('objectSelected', on3DSelect);
+    scene.on('objectClick', on3DSelect);
+  }
+
+  function switchSystemProfile(profileId) {
+    if (!window.SystemProfiles) {
+      console.error('[AppOrchestrator] SystemProfiles registry unavailable');
+      return null;
+    }
+    const profile = window.SystemProfiles.get(profileId);
+    if (!profile) {
+      console.error(`[AppOrchestrator] Profile not found: "${profileId}"`);
+      return null;
+    }
+
+    console.log(`[AppOrchestrator] Switching to profile: ${profile.nameEn} (${profile.id})`);
+
+    // 1. Update active profile reference
+    state.activeProfileId = profileId;
+    state.activeProfile = profile;
+
+    // 2. Reset scenario state and breakers cleanly
+    state.operatingMode = 'normal_day';
+    state.irradiance = 850;
+    state.temperature = 25;
+    state.batterySOC = 75;
+
+    // Reset loads based on profile
+    if (profile.equipment?.nonCriticalLoads?.presence !== false) {
+      state.normalLoadPower = profile.equipment?.nonCriticalLoads?.nominalPower_W || 2200;
+    } else {
+      state.normalLoadPower = 0;
+    }
+    if (profile.equipment?.criticalLoads?.presence !== false) {
+      state.criticalLoadPower = profile.equipment?.criticalLoads?.nominalPower_W || 1500;
+    } else {
+      state.criticalLoadPower = 0;
+    }
+
+    // Reset all fault injection flags
+    Object.keys(state.failures).forEach(k => {
+      state.failures[k] = false;
+    });
+
+    // Reset breaker states cleanly according to profile connectivity
+    const hasBattery = !(profile.equipment?.batteryBank?.present === false || profile.equipment?.batteryStorage?.presence === false || profile.systemRatings?.batteryPresent === false);
+    const hasEps = !(profile.connectivity?.buses?.['BUS-EPS']?.present === false || profile.connectivity?.buses?.['BUS-EPS']?.presence === false);
+    const hasGrid = !(profile.connectivity?.buses?.['BUS-G']?.present === false || profile.connectivity?.buses?.['BUS-G']?.presence === false);
+
+    state.sbyPosition = hasEps ? 'I' : '0';
+
+    state.breakers = {
+      q0_mcb: hasGrid,
+      grid_mcb: hasGrid,
+      qn_mcb: true,
+      qg_mcb: hasGrid,
+      inv_grid_mcb: hasGrid,
+      qbp_mcb: hasGrid && hasEps,
+      fspd_mcb: true,
+      dc_isolator: true,
+      qpv_isolator: true,
+      dc_iso_1: true,
+      dc_iso_2: true,
+      battery_ocpd: hasBattery,
+      battery_qb: hasBattery,
+      eps_mcb: hasEps,
+      qe_mcb: hasEps,
+      qo_mcb: hasEps,
+      eps_rcd: hasEps
+    };
+
+    // Reset UI fault injection buttons & mode buttons
+    document.querySelectorAll('.fault-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === 'normal_day');
+    });
+
+    // Update select dropdown if different
+    const profileSelect = document.getElementById('select-system-profile');
+    if (profileSelect && profileSelect.value !== profileId) {
+      profileSelect.value = profileId;
+    }
+
+    // Reset inspector drawer
+    activeSelectedObjectData = null;
+    if (typeof manageDrawerOpContainer === 'function') {
+      manageDrawerOpContainer(null);
+    }
+    const drawer = document.getElementById('inspector-drawer');
+    if (drawer && drawer.classList.contains('open')) {
+      drawer.classList.remove('open');
+    }
+
+    // Update brand title
+    const brandTitleEl = document.querySelector('.brand-title');
+    if (brandTitleEl) {
+      const std = profile.sldRef?.standard || 'IEC 60364-7-712';
+      brandTitleEl.innerHTML = `${profile.name} <span style="font-size:0.75rem; background:rgba(245,158,11,0.2); color:#fbbf24; padding:2px 8px; border-radius:999px; border:1px solid rgba(245,158,11,0.4);">${std}</span>`;
+    }
+
+    // 3. If window.sceneInstance: call window.sceneInstance.dispose(), instantiate new window.HybridSolar3DScene('canvas-container', profile)
+    if (window.sceneInstance) {
+      if (typeof window.sceneInstance.dispose === 'function') {
+        try {
+          window.sceneInstance.dispose();
+        } catch (err) {
+          console.warn('[AppOrchestrator] Error disposing 3D scene:', err);
+        }
+      }
+      window.sceneInstance = null;
+
+      if (typeof window.HybridSolar3DScene === 'function') {
+        try {
+          window.sceneInstance = new window.HybridSolar3DScene('canvas-container', profile);
+          console.log('[AppOrchestrator] Re-instantiated HybridSolar3DScene with profile:', profileId);
+
+          // 4. Re-wire 3D events to AppOrchestrator
+          wire3DSceneEvents(window.sceneInstance);
+        } catch (err) {
+          console.error('[AppOrchestrator] Error instantiating new 3D scene:', err);
+        }
+      }
+    }
+
+    // 5. Re-run computeElectricalState() and updateHUDView()
+    computeElectricalState();
+    updateHUDView();
+
+    return profile;
+  }
+
   function initApp() {
     setupHeaderActions();
     setupCockpitControls();
@@ -2522,12 +2914,17 @@
     setupContractorsModal();
     setupDisputesModal();
 
+    // Ensure active profile reference
+    if (!state.activeProfile && window.SystemProfiles) {
+      state.activeProfile = window.SystemProfiles.get(state.activeProfileId || 'profile-hyb-1p-5kw-v1');
+    }
+
     // Instantiate 3D Scene if class is present and container is empty
     if (!window.sceneInstance && typeof window.HybridSolar3DScene === 'function') {
       try {
         const container = document.getElementById('canvas-container');
         if (container) {
-          window.sceneInstance = new window.HybridSolar3DScene('canvas-container');
+          window.sceneInstance = new window.HybridSolar3DScene('canvas-container', state.activeProfile);
           console.log("3D Scene successfully initialized by App Orchestrator.");
         }
       } catch (err) {
@@ -2536,43 +2933,8 @@
     }
 
     // Connect 3D switch changes and object clicks to central AppOrchestrator
-    if (window.sceneInstance && typeof window.sceneInstance.on === 'function') {
-      window.sceneInstance.on('switchChange', (data) => {
-        if (!data || !data.id) return;
-        sound.playClick();
-        if (data.id === 'sby_switch') {
-          window.AppOrchestrator.onSbyStateChanged(data.state, '3d');
-        } else {
-          window.AppOrchestrator.onBreakerStateChanged(data.id, data.state, '3d');
-        }
-        if (typeof refreshDrawerOperationState === 'function') {
-          refreshDrawerOperationState();
-        }
-      });
-
-      // Step 9: Listen to objectSelected for safe selection and inspector drawer operation controls
-      let lastSelectionTime = 0;
-      let lastSelectionKey = null;
-
-      const on3DSelect = (data) => {
-        if (!data) return;
-        const now = performance.now();
-        const key = (data.id || '') + '_' + (data.action || '') + '_' + (data.name || '');
-        if (key && key === lastSelectionKey && (now - lastSelectionTime < 150)) {
-          return;
-        }
-        lastSelectionTime = now;
-        lastSelectionKey = key;
-        if (sound && typeof sound.playClick === 'function') sound.playClick();
-        if (typeof handleObjectSelected === 'function') {
-          handleObjectSelected(data);
-        }
-      };
-
-      window.sceneInstance.on('objectSelected', on3DSelect);
-
-      // Keep objectClick compatible
-      window.sceneInstance.on('objectClick', on3DSelect);
+    if (window.sceneInstance) {
+      wire3DSceneEvents(window.sceneInstance);
     }
 
     // Setup Camera View & Legend Buttons
@@ -2808,6 +3170,9 @@
     },
     setBreaker: function(breakerId, stateBool, origin = 'orchestrator') {
       this.onBreakerStateChanged(breakerId, stateBool, origin);
+    },
+    switchSystemProfile: function(profileId) {
+      return switchSystemProfile(profileId);
     },
     getState: () => state
   };

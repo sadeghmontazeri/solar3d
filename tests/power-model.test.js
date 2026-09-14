@@ -239,6 +239,76 @@ const profileScenarios = [
       assert.ok(Object.isFrozen(p), 'Registered profile must be frozen');
       return true;
     }
+  },
+  {
+    id: 'PR4',
+    name: 'on-grid profile-ong-1p-5kw-v1 schema validation and power-model battery bypass',
+    check: () => {
+      const p = SystemProfiles.get('profile-ong-1p-5kw-v1');
+      assert.ok(p, 'profile-ong-1p-5kw-v1 must be registered');
+      assert.strictEqual(p.familyId, '1p-ongrid');
+      assert.strictEqual(p.family.topology, 'on-grid');
+      assert.strictEqual(p.equipment.batteryBank.present, false);
+      const val = validateSystemProfile(p);
+      assert.strictEqual(val.valid, true, `Profile must be valid: ${val.errors.join(', ')}`);
+
+      // Test with power model
+      const res = computePowerModel({
+        irradiance: 850, temperature: 25, normalLoadPower: 2200, criticalLoadPower: 0, batterySOC: 75,
+        operatingMode: 'normal_day', sbyPosition: 'I', breakers: defBreakers, failures: defFailures
+      }, p);
+      assert.strictEqual(res.battery.p, 0, 'On-grid profile must have battery.p === 0');
+      assert.ok(res.grid.p < 0, 'PV surplus must be exported to grid');
+      return true;
+    }
+  },
+  {
+    id: 'PR5',
+    name: '10kW hybrid profile-hyb-1p-10kw-v1 schema validation and expanded capacity ratings',
+    check: () => {
+      const p = SystemProfiles.get('profile-hyb-1p-10kw-v1');
+      assert.ok(p, 'profile-hyb-1p-10kw-v1 must be registered');
+      assert.strictEqual(p.familyId, '1p-hybrid');
+      assert.strictEqual(p.family.topology, 'hybrid');
+      assert.strictEqual(p.systemRatings.acRatedPower_W, 10000);
+      assert.strictEqual(p.systemRatings.dcString1RatedPower_W, 5500);
+      assert.strictEqual(p.systemRatings.dcString2RatedPower_W, 5500);
+      assert.strictEqual(p.systemRatings.batteryNominalCapacity_Wh, 10240);
+      const val = validateSystemProfile(p);
+      assert.strictEqual(val.valid, true, `Profile must be valid: ${val.errors.join(', ')}`);
+      return true;
+    }
+  },
+  {
+    id: 'PR6',
+    name: 'off-grid profile-off-1p-5kw-v1 schema validation and generator input (BUS-G absent)',
+    check: () => {
+      const p = SystemProfiles.get('profile-off-1p-5kw-v1');
+      assert.ok(p, 'profile-off-1p-5kw-v1 must be registered');
+      assert.strictEqual(p.familyId, '1p-offgrid');
+      assert.strictEqual(p.family.topology, 'off-grid');
+      assert.strictEqual(p.connectivity.buses['BUS-G'].present, false);
+      const val = validateSystemProfile(p);
+      assert.strictEqual(val.valid, true, `Profile must be valid: ${val.errors.join(', ')}`);
+      return true;
+    }
+  },
+  {
+    id: 'PR7',
+    name: 'three-phase profile-hyb-3p-15kw-v1 schema validation and 3-phase 400V ratings',
+    check: () => {
+      const p = SystemProfiles.get('profile-hyb-3p-15kw-v1');
+      assert.ok(p, 'profile-hyb-3p-15kw-v1 must be registered');
+      assert.strictEqual(p.familyId, '3p-hybrid');
+      assert.strictEqual(p.family.topology, 'hybrid');
+      assert.strictEqual(p.family.phaseCount, 3);
+      assert.deepStrictEqual(p.family.phases, ['L1', 'L2', 'L3']);
+      assert.strictEqual(p.systemRatings.acNominalVoltage_V, 400);
+      assert.strictEqual(p.systemRatings.acRatedPower_W, 15000);
+      const val = validateSystemProfile(p);
+      assert.strictEqual(val.valid, true, `Profile must be valid: ${val.errors.join(', ')}`);
+      return true;
+    }
   }
 ];
 

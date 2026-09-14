@@ -26,9 +26,18 @@
 class HybridSolar3DScene {
   /**
    * @param {string|HTMLElement} container - DOM container id or element
-   * @param {Object} options - Configuration options
+   * @param {Object} options - Configuration options or SystemProfile
+   * @param {Object} [profile=null] - Optional SystemProfile document
    */
-  constructor(container = 'canvas-container', options = {}) {
+  constructor(container = 'canvas-container', options = {}, profile = null) {
+    if (options && (options.id || options.schemaVersion || options.familyId)) {
+      profile = options;
+      options = {};
+    } else if (options && options.profile) {
+      profile = options.profile;
+    }
+    this.activeProfile = profile || (typeof window !== 'undefined' ? window.SystemProfiles?.get('profile-hyb-1p-5kw-v1') : null) || null;
+
     this.containerId = typeof container === 'string' ? container : null;
     this.containerElement = typeof container === 'string' ? document.getElementById(container) : container;
     this.options = Object.assign({
@@ -77,6 +86,7 @@ class HybridSolar3DScene {
       targetLookAt: new THREE.Vector3()
     };
     this.cameraHistory = null;
+    this._cameraStack = [];
     this.activeLabelSubsystem = null;
 
     // Camera Presets
@@ -179,6 +189,7 @@ class HybridSolar3DScene {
     this._pointerDownPos = null;
     this.hoveredObject = null;
     this.eventListeners = {};
+    this._listeners = {};
 
     // Auto-init if container exists
     if (this.containerElement) {
@@ -203,10 +214,32 @@ class HybridSolar3DScene {
   // ==========================================
 
   /**
-   * Initializes the complete 3D scene cleanly (guards against double-init)
+   * Initializes 3D scene with specific container and optional SystemProfile document
+   * @param {string|HTMLElement} containerId
+   * @param {Object} [profile=null]
    */
-  init(container) {
+  initScene(containerId, profile = null) {
+    if (profile) {
+      this.activeProfile = profile;
+    } else if (!this.activeProfile && typeof window !== 'undefined') {
+      this.activeProfile = window.SystemProfiles?.get('profile-hyb-1p-5kw-v1') || null;
+    }
+    return this.init(containerId, profile);
+  }
+
+  /**
+   * Initializes the complete 3D scene cleanly (guards against double-init)
+   * @param {string|HTMLElement} [container]
+   * @param {Object} [profile=null]
+   */
+  init(container, profile = null) {
     if (this.initialized) return;
+    if (profile) {
+      this.activeProfile = profile;
+    }
+    if (!this.activeProfile && typeof window !== 'undefined') {
+      this.activeProfile = window.SystemProfiles?.get('profile-hyb-1p-5kw-v1') || null;
+    }
     if (container) {
       this.containerElement = typeof container === 'string' ? document.getElementById(container) : container;
     }
@@ -268,19 +301,7 @@ class HybridSolar3DScene {
     this._setupLighting();
 
     // 7. Equipment Models & Geometry
-    this._buildEnvironment();
-    this._buildRoofAndPVArray();
-    this._buildDCProtectionEnclosure();
-    this._buildHybridInverter();
-    this._buildInverterInternalSubsystems();
-    this._buildBatteryEnergyStorage();
-    this._buildEarthingSystemMET();
-    this._buildMainDistributionBoard();
-    this._buildEPSDistributionBoard();
-    this._buildCTSensor();
-    this._buildUtilityCutoutAndLoads();
-    this._buildCablingAndConduits();
-    this._buildParticleFlowSystems();
+    this._buildScene();
 
     // 8. Event Handlers
     this._setupEventListeners();
@@ -493,6 +514,26 @@ class HybridSolar3DScene {
     this.scene.add(dcBoxSpot);
     this.scene.add(dcBoxSpot.target);
     this.roomLights.push(dcBoxSpot);
+  }
+
+  _buildScene() {
+    this._buildEnvironment();
+    this._buildRoofAndPVArray();
+    this._buildDCProtectionEnclosure();
+    this._buildHybridInverter();
+    this._buildInverterInternalSubsystems();
+    this._buildBatteryEnergyStorage();
+    this._buildEarthingSystemMET();
+    this._buildMainDistributionBoard();
+    this._buildEPSDistributionBoard();
+    this._buildCTSensor();
+    this._buildUtilityCutoutAndLoads();
+    this._buildCablingAndConduits();
+    this._buildParticleFlowSystems();
+
+    if (this.activeProfile) {
+      this.loadProfile(this.activeProfile);
+    }
   }
 
   _buildEnvironment() {
@@ -4388,11 +4429,21 @@ class HybridSolar3DScene {
           // Direction: positive = normal forward, negative = reverse (e.g. battery discharge or grid export)
           p.direction = flow.watts >= 0 ? 1 : -1;
           const mag = Math.abs(flow.watts);
-          // Scale speed between 0.05 and 0.45 based on power magnitude
-          p.speed = Math.min(0.45, Math.max(0.05, (mag / 5000) * 0.45));
+          // V13 fix: scale particle speed relative to circuit's rated capacity
+          const circuit = this.activeProfile?.connectivity?.circuits?.[p.id];
+          const capacity = flow.capacity || flow.circuitCapacity || circuit?.ratedPower_W || circuit?.ratedCapacity_W || (this.activeProfile?.equipment?.inverter?.acRating_W) || 5000;
+          p.speed = Math.min(0.45, Math.max(0.05, (mag / capacity) * 0.45));
         }
       }
     }
+  }
+
+  getParticleSpeed(circuitId, watts, capacity) {
+    const p = this.animatedParticles.find(item => item.id === circuitId);
+    const circuit = this.activeProfile?.connectivity?.circuits?.[circuitId];
+    const cap = capacity || circuit?.ratedPower_W || (this.activeProfile?.equipment?.inverter?.acRating_W) || 5000;
+    const mag = Math.abs(watts !== undefined ? watts : (p?.watts || 0));
+    return Math.min(0.45, Math.max(0.05, (mag / cap) * 0.45));
   }
 
   on(event, callback) {
@@ -4523,32 +4574,190 @@ class HybridSolar3DScene {
     this.renderer.render(this.scene, this.camera);
   }
 
+  loadProfile(profile) {
+    if (!profile) return;
+    this.activeProfile = profile;
+    const acRating = profile.equipment?.inverter?.acRating_W || profile.systemRatings?.acRatedPower_W || 5000;
+    this.circuitCapacity = acRating;
+
+    // Adapt 3D presentation to profile topology
+    const hasBattery = profile.equipment?.batteryBank?.present !== false;
+    if (!hasBattery) {
+      // Turn off battery particle flows
+      this.updatePowerFlows({
+        battery: { active: false, watts: 0 }
+      });
+      // Dim or hide battery meshes in scene
+      if (this.scene) {
+        this.scene.traverse((child) => {
+          if (child.name && (child.name.toLowerCase().includes('battery') || child.name.toLowerCase().includes('bess'))) {
+            if (child.isMesh && child.material) {
+              child.material.transparent = true;
+              child.material.opacity = 0.2;
+            }
+          }
+        });
+      }
+    } else {
+      if (this.scene) {
+        this.scene.traverse((child) => {
+          if (child.name && (child.name.toLowerCase().includes('battery') || child.name.toLowerCase().includes('bess'))) {
+            if (child.isMesh && child.material) {
+              child.material.opacity = 1.0;
+            }
+          }
+        });
+      }
+    }
+    return true;
+  }
+
   // ==========================================
-  // CLEANUP & DISPOSAL
+  // CLEANUP & DISPOSAL (V14 FIX)
   // ==========================================
 
   dispose() {
     this.isDisposed = true;
-    if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
 
+    // 1. Controls disposal
+    if (this.controls && typeof this.controls.dispose === 'function') {
+      this.controls.dispose();
+      this.controls = null;
+    }
+
+    // 2. Remove all DOM event listeners
     if (this.renderer && this.renderer.domElement) {
       if (this._onPointerDown) {
         this.renderer.domElement.removeEventListener('pointerdown', this._onPointerDown);
       }
-      this.renderer.domElement.removeEventListener('pointermove', this._onPointerMove);
-      this.renderer.domElement.removeEventListener('click', this._onClick);
+      if (this._onPointerMove) {
+        this.renderer.domElement.removeEventListener('pointermove', this._onPointerMove);
+      }
+      if (this._onClick) {
+        this.renderer.domElement.removeEventListener('click', this._onClick);
+      }
+      if (this._onDoubleClick) {
+        this.renderer.domElement.removeEventListener('dblclick', this._onDoubleClick);
+      }
     }
-    window.removeEventListener('resize', this._onResize);
+    if (this._onResize) {
+      window.removeEventListener('resize', this._onResize);
+    }
 
+    let disposedGeometries = 0;
+    let disposedMaterials = 0;
+    let disposedParticles = 0;
+
+    // 3. Traverse this.scene and dispose all geometries, materials, textures
+    if (this.scene) {
+      this.scene.traverse(child => {
+        if (child.isMesh || child.isPoints || child.isLine) {
+          if (child.geometry) {
+            child.geometry.dispose();
+            disposedGeometries++;
+          }
+          if (child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach(m => {
+                if (m.map) m.map.dispose();
+                m.dispose();
+                disposedMaterials++;
+              });
+            } else {
+              if (child.material.map) child.material.map.dispose();
+              child.material.dispose();
+              disposedMaterials++;
+            }
+          }
+        }
+      });
+      while (this.scene.children.length > 0) {
+        this.scene.remove(this.scene.children[0]);
+      }
+    }
+
+    // 4. Dispose this.cables
+    if (this.cables) {
+      for (const key of Object.keys(this.cables)) {
+        const c = this.cables[key];
+        if (c && c.mesh) {
+          if (c.mesh.geometry) { c.mesh.geometry.dispose(); disposedGeometries++; }
+          if (c.mesh.material) {
+            if (Array.isArray(c.mesh.material)) c.mesh.material.forEach(m => { m.dispose(); disposedMaterials++; });
+            else { c.mesh.material.dispose(); disposedMaterials++; }
+          }
+        }
+      }
+      this.cables = {};
+    }
+
+    // 5. Dispose this.animatedParticles
+    if (this.animatedParticles) {
+      for (const p of this.animatedParticles) {
+        if (p && p.pointsMesh) {
+          if (p.pointsMesh.geometry) { p.pointsMesh.geometry.dispose(); disposedGeometries++; }
+          if (p.pointsMesh.material) {
+            if (p.pointsMesh.material.map) p.pointsMesh.material.map.dispose();
+            p.pointsMesh.material.dispose();
+            disposedMaterials++;
+          }
+        }
+        disposedParticles++;
+      }
+      this.animatedParticles = [];
+    }
+
+    // 6. Clear labels and tooltip DOM
+    if (this.labels) {
+      for (const item of this.labels) {
+        if (item && item.element && item.element.parentNode) {
+          item.element.parentNode.removeChild(item.element);
+        }
+      }
+      this.labels = [];
+    }
+    if (this.tooltipEl && this.tooltipEl.parentNode) {
+      this.tooltipEl.parentNode.removeChild(this.tooltipEl);
+      this.tooltipEl = null;
+    }
+
+    // 7. Remove overlayContainer and renderer canvas
     if (this.overlayContainer && this.overlayContainer.parentNode) {
       this.overlayContainer.parentNode.removeChild(this.overlayContainer);
+      this.overlayContainer = null;
     }
-
     if (this.renderer && this.renderer.domElement && this.renderer.domElement.parentNode) {
       this.renderer.domElement.parentNode.removeChild(this.renderer.domElement);
     }
 
-    if (this.renderer) this.renderer.dispose();
+    // 8. Clear state, collections and event listeners
+    const disposedListeners = Object.keys(this.eventListeners || {}).reduce((acc, k) => acc + (this.eventListeners[k]?.length || 0), 0);
+    this.switchgear = {};
+    this.interactiveObjects = [];
+    this._cameraStack = [];
+    this.circuitGraph = {};
+    this.highlightedCircuitMeshes = [];
+    this.eventListeners = {};
+
+    // 9. Call this.renderer.dispose()
+    if (this.renderer) {
+      this.renderer.dispose();
+      this.renderer = null;
+    }
+    this.scene = null;
+    this.camera = null;
+
+    this.disposalReport = {
+      disposedGeometries,
+      disposedMaterials,
+      disposedParticles,
+      disposedListeners,
+      isCleaned: true
+    };
   }
 }
 

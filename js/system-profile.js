@@ -1185,7 +1185,850 @@
   });
 
   // ============================================================================
-  // 3. SYSTEM PROFILES REGISTRY & EXTENSION API
+  // 3. APPROVED PROFILE: profile-ong-1p-5kw-v1 (On-Grid Single-Phase 5 kW)
+  // ============================================================================
+  const profileOng1p5kwV1 = Object.freeze({
+    id: 'profile-ong-1p-5kw-v1',
+    name: '۵ کیلووات تکفاز متصل به شبکه On-Grid (بدون باتری)',
+    nameEn: '5kW Single-Phase Grid-Tied (On-Grid) PV System',
+    version: '1.0.0',
+    schemaVersion: '1.0.0',
+    familyId: '1p-ongrid',
+    description: 'سامانه متصل به شبکه (On-Grid) ۵ کیلووات تک‌فاز فاقد باتری و خروجی پشتیبان اضطراری (EPS)',
+
+    family: {
+      familyId: '1p-ongrid',
+      familyNameFa: 'متصل به شبکه تک‌فاز (On-Grid)',
+      familyNameEn: 'Single-Phase On-Grid (up to 10kW)',
+      phaseCount: 1,
+      phases: ['L1'],
+      neutralPresent: true,
+      pePresent: true,
+      topology: 'on-grid',
+      earthingSystem: 'TN-S'
+    },
+
+    status: 'active',
+    sldRef: {
+      drawingId: 'SLD-ONG-01',
+      titleFa: 'نقشه تک‌خطی متصل به شبکه تک‌فاز ۵kW (SLD-ONG-01)',
+      standard: 'ONG-FA-001',
+      revision: 'Rev A',
+      date: '2026-09-14',
+      requiresOwnerRedraw: false
+    },
+
+    systemRatings: {
+      acRatedPower_W: 5000,
+      acMaxApparentPower_VA: 5500,
+      acNominalVoltage_V: 230,
+      acVoltageRange_V: { min: 184, max: 253 },
+      acNominalFrequency_Hz: 50.0,
+      acFrequencyRange_Hz: { min: 47.5, max: 51.5 },
+      acRatedCurrent_A: 21.7,
+      acMaxCurrent_A: 24.0,
+
+      dcRatedTotalPower_W: 5600,
+      dcStringCount: 2,
+      dcString1RatedPower_W: 2800,
+      dcString2RatedPower_W: 2800,
+      dcStringNominalVoc_V: 385,
+      dcStringNominalVmp_V: 315,
+      dcMpptVoltageRange_V: { min: 125, max: 500 },
+      dcMaxInputVoltage_V: 550,
+      dcMaxMpptCurrent_A: 15.0,
+      dcTempCoeffP_pctPerC: -0.38,
+      dcTempCoeffV_pctPerC: -0.28,
+
+      batteryPresent: false,
+      batteryNominalCapacity_Wh: 0,
+
+      epsRatedPower_W: 0,
+      epsMaxOverloadPower_W: 0,
+      epsNominalVoltage_V: 0,
+      epsNominalFrequency_Hz: 50.0,
+      epsTransferTime_ms: 0,
+      epsRcdSensitivity_mA: 30,
+
+      inverterPeakEfficiency_pct: 97.6,
+      inverterStandbyLoss_W: 15
+    },
+
+    equipment: {
+      pvArray: canonicalProfileHyb1p5kwV1.equipment.pvArray,
+      dcCombinerBox: canonicalProfileHyb1p5kwV1.equipment.dcCombinerBox,
+      inverter: {
+        id: 'grid_tied_inverter',
+        nameFa: 'اینورتر متصل به شبکه ۵ کیلووات تک‌فاز',
+        nameEn: '5kW Single-Phase Grid-Tied Inverter',
+        type: 'grid_tied_inverter',
+        presence: true,
+        ratedContinuousPower_W: 5000,
+        acRating_W: 5000,
+        mpptTrackers: 2,
+        internalArchitecture: {
+          mppt1: { id: 'INV_MPPT1', vMin_V: 125, vMax_V: 500, maxI_A: 15 },
+          mppt2: { id: 'INV_MPPT2', vMin_V: 125, vMax_V: 500, maxI_A: 15 },
+          dcLinkBus: { id: 'INV_DC_BUS', nominalV_V: 400 },
+          fullBridgeSpwm: { id: 'INV_SPWM_BRIDGE', acRatedV_V: 230, pMax_W: 5000 },
+          antiIslandingRelay: { id: 'KSEP', name: 'Anti-Islanding Grid Disconnect Relay', tripTime_ms: 20 },
+          rcmu: { id: 'RCMU', name: 'Residual Current Monitoring Unit', iDeltaN_mA: 30 }
+        },
+        ports: {
+          pv1Input: { id: 'PORT_INV_PV1', type: 'dc', terminals: ['PV1+', 'PV1-'] },
+          pv2Input: { id: 'PORT_INV_PV2', type: 'dc', terminals: ['PV2+', 'PV2-'] },
+          gridPort: { id: 'PORT_INV_GRID', type: 'ac', terminals: ['L_GRID', 'N_GRID', 'PE_GRID'] },
+          commsMeter: { id: 'PORT_INV_METER', type: 'signal', protocol: 'RS485-Modbus' }
+        }
+      },
+      batteryBank: { present: false, capacity_Wh: 0 },
+      batteryStorage: { presence: false, present: false },
+      batteryDisconnect: { presence: false, present: false },
+      earthingMet: canonicalProfileHyb1p5kwV1.equipment.earthingMet,
+      mainDistributionBoard: {
+        id: 'main_distribution_board',
+        nameFa: 'تابلو توزیع اصلی AC و مبادله با شبکه (MDB)',
+        nameEn: 'Main AC Distribution Board (MDB)',
+        type: 'distribution_board',
+        presence: true,
+        enclosure: canonicalProfileHyb1p5kwV1.equipment.mainDistributionBoard.enclosure,
+        subcomponents: {
+          q0Mcb: canonicalProfileHyb1p5kwV1.equipment.mainDistributionBoard.subcomponents.q0Mcb,
+          smartMeter: canonicalProfileHyb1p5kwV1.equipment.mainDistributionBoard.subcomponents.smartMeter,
+          ctSensor: canonicalProfileHyb1p5kwV1.equipment.mainDistributionBoard.subcomponents.ctSensor,
+          qgMcb: canonicalProfileHyb1p5kwV1.equipment.mainDistributionBoard.subcomponents.qgMcb,
+          qnMcb: canonicalProfileHyb1p5kwV1.equipment.mainDistributionBoard.subcomponents.qnMcb,
+          fspdMcb: canonicalProfileHyb1p5kwV1.equipment.mainDistributionBoard.subcomponents.fspdMcb,
+          acSpd: canonicalProfileHyb1p5kwV1.equipment.mainDistributionBoard.subcomponents.acSpd,
+          busG: canonicalProfileHyb1p5kwV1.equipment.mainDistributionBoard.subcomponents.busG
+        }
+      },
+      epsDistributionBoard: { presence: false, present: false },
+      utilityService: canonicalProfileHyb1p5kwV1.equipment.utilityService,
+      nonCriticalLoads: canonicalProfileHyb1p5kwV1.equipment.nonCriticalLoads,
+      criticalLoads: { presence: false, present: false }
+    },
+
+    connectivity: {
+      buses: {
+        'BUS-G': canonicalProfileHyb1p5kwV1.connectivity.buses['BUS-G'],
+        'DC-BUS': {
+          id: 'DC-BUS',
+          nameFa: 'باس DC داخلی اینورتر',
+          voltageNominal_V: 400,
+          liveWhen: 'pv_power > 20W OR grid_available',
+          fedBy: ['mppt1', 'mppt2', 'ac_grid_rectifier']
+        },
+        'BUS-EPS': {
+          id: 'BUS-EPS',
+          present: false,
+          presence: false,
+          nameFa: 'شینه تغذیه بارهای اضطراری (غیرفعال در سامانه متصل به شبکه)'
+        },
+        'MET': canonicalProfileHyb1p5kwV1.connectivity.buses['MET']
+      },
+      circuits: {
+        pv1_dc_string: canonicalProfileHyb1p5kwV1.connectivity.circuits.pv1_dc_string,
+        pv2_dc_string: canonicalProfileHyb1p5kwV1.connectivity.circuits.pv2_dc_string,
+        utility_service_incomer: canonicalProfileHyb1p5kwV1.connectivity.circuits.utility_service_incomer,
+        inverter_grid_coupling: canonicalProfileHyb1p5kwV1.connectivity.circuits.inverter_grid_coupling,
+        non_critical_loads_feeder: canonicalProfileHyb1p5kwV1.connectivity.circuits.non_critical_loads_feeder,
+        earthing_equipotential_network: canonicalProfileHyb1p5kwV1.connectivity.circuits.earthing_equipotential_network
+      },
+      interlocks: [
+        canonicalProfileHyb1p5kwV1.connectivity.interlocks[1]
+      ]
+    },
+
+    layout3D: {
+      room: canonicalProfileHyb1p5kwV1.layout3D.room,
+      enclosures: {
+        rooftopPV: canonicalProfileHyb1p5kwV1.layout3D.enclosures.rooftopPV,
+        dcCombinerBox: canonicalProfileHyb1p5kwV1.layout3D.enclosures.dcCombinerBox,
+        hybridInverter: canonicalProfileHyb1p5kwV1.layout3D.enclosures.hybridInverter,
+        earthingMet: canonicalProfileHyb1p5kwV1.layout3D.enclosures.earthingMet,
+        mainDistributionBoard: canonicalProfileHyb1p5kwV1.layout3D.enclosures.mainDistributionBoard,
+        ctSensor: canonicalProfileHyb1p5kwV1.layout3D.enclosures.ctSensor,
+        utilityCutout: canonicalProfileHyb1p5kwV1.layout3D.enclosures.utilityCutout,
+        nonCriticalLoadsBlock: canonicalProfileHyb1p5kwV1.layout3D.enclosures.nonCriticalLoadsBlock
+      },
+      cameraFraming: canonicalProfileHyb1p5kwV1.layout3D.cameraFraming,
+      cabling3D: {
+        pv1: canonicalProfileHyb1p5kwV1.layout3D.cabling3D.pv1,
+        pv2: canonicalProfileHyb1p5kwV1.layout3D.cabling3D.pv2,
+        grid_in: canonicalProfileHyb1p5kwV1.layout3D.cabling3D.grid_in,
+        inv_grid: canonicalProfileHyb1p5kwV1.layout3D.cabling3D.inv_grid,
+        load_non_critical: canonicalProfileHyb1p5kwV1.layout3D.cabling3D.load_non_critical,
+        earthing: canonicalProfileHyb1p5kwV1.layout3D.cabling3D.earthing
+      }
+    },
+
+    sldMapping: {
+      schematicId: 'SLD-ONG-01',
+      standard: 'ONG-FA-001 Rev A',
+      symbolMapping: {
+        q0_mcb: canonicalProfileHyb1p5kwV1.sldMapping.symbolMapping.q0_mcb,
+        qg_mcb: canonicalProfileHyb1p5kwV1.sldMapping.symbolMapping.qg_mcb,
+        qn_mcb: canonicalProfileHyb1p5kwV1.sldMapping.symbolMapping.qn_mcb,
+        fspd_mcb: canonicalProfileHyb1p5kwV1.sldMapping.symbolMapping.fspd_mcb,
+        dc_iso_1: canonicalProfileHyb1p5kwV1.sldMapping.symbolMapping.dc_iso_1,
+        dc_iso_2: canonicalProfileHyb1p5kwV1.sldMapping.symbolMapping.dc_iso_2
+      },
+      telemetryAnchors: {
+        pvArray: canonicalProfileHyb1p5kwV1.sldMapping.telemetryAnchors.pvArray,
+        grid: canonicalProfileHyb1p5kwV1.sldMapping.telemetryAnchors.grid
+      },
+      flowOverlays: {
+        pv: canonicalProfileHyb1p5kwV1.sldMapping.flowOverlays.pv,
+        grid: canonicalProfileHyb1p5kwV1.sldMapping.flowOverlays.grid
+      }
+    }
+  });
+
+  // ============================================================================
+  // 4. APPROVED PROFILE: profile-hyb-1p-10kw-v1 (10 kW Single-Phase Hybrid)
+  // ============================================================================
+  const profileHyb1p10kwV1 = Object.freeze({
+    id: 'profile-hyb-1p-10kw-v1',
+    name: '۱۰ کیلووات تکفاز هایبرید (ظرفیت دوبرابر)',
+    nameEn: '10kW Single-Phase Hybrid PV System with Battery Storage',
+    version: '1.0.0',
+    schemaVersion: '1.0.0',
+    familyId: '1p-hybrid',
+    description: 'سامانه ارتقایافته هیبرید تک‌فاز ۱۰kW با اینورتر ۱۰kW، دو استرینگ ۵۵۰۰W و باتری ۱۰۲۴۰Wh',
+
+    family: {
+      familyId: '1p-hybrid',
+      familyNameFa: 'هیبرید تک‌فاز (تا ۱۰ کیلووات)',
+      familyNameEn: 'Single-Phase Hybrid (up to 10kW)',
+      phaseCount: 1,
+      phases: ['L1'],
+      neutralPresent: true,
+      pePresent: true,
+      topology: 'hybrid',
+      earthingSystem: 'TN-S'
+    },
+
+    status: 'active',
+    sldRef: {
+      drawingId: 'SLD-HYB-10K',
+      titleFa: 'نقشه تک‌خطی تک‌فاز ۱۰kW (SLD-HYB-10K)',
+      standard: 'HYB-FA-002',
+      revision: 'Rev A',
+      date: '2026-09-14',
+      requiresOwnerRedraw: false
+    },
+
+    systemRatings: {
+      acRatedPower_W: 10000,
+      acMaxApparentPower_VA: 11000,
+      acNominalVoltage_V: 230,
+      acVoltageRange_V: { min: 184, max: 253 },
+      acNominalFrequency_Hz: 50.0,
+      acFrequencyRange_Hz: { min: 47.5, max: 51.5 },
+      acRatedCurrent_A: 43.5,
+      acMaxCurrent_A: 48.0,
+
+      dcRatedTotalPower_W: 11000,
+      dcStringCount: 2,
+      dcString1RatedPower_W: 5500,
+      dcString2RatedPower_W: 5500,
+      dcStringNominalVoc_V: 450,
+      dcStringNominalVmp_V: 370,
+      dcMpptVoltageRange_V: { min: 150, max: 550 },
+      dcMaxInputVoltage_V: 600,
+      dcMaxMpptCurrent_A: 25.0,
+      dcTempCoeffP_pctPerC: -0.38,
+      dcTempCoeffV_pctPerC: -0.28,
+
+      batteryPresent: true,
+      batteryType: 'LiFePO4',
+      batteryNominalVoltage_V: 51.2,
+      batteryWorkingVoltageRange_V: { min: 48.0, max: 57.6 },
+      batteryNominalCapacity_Ah: 200,
+      batteryNominalCapacity_Wh: 10240,
+      batteryMaxChargePower_W: 5000,
+      batteryMaxDischargePower_W: 8000,
+      batteryMaxContinuousCurrent_A: 200,
+      batteryMinSOC_pct: 10,
+      batteryReserveSOC_pct: 15,
+
+      epsRatedPower_W: 10000,
+      epsMaxOverloadPower_W: 10400,
+      epsNominalVoltage_V: 230,
+      epsNominalFrequency_Hz: 50.0,
+      epsTransferTime_ms: 10,
+      epsRcdSensitivity_mA: 30,
+
+      inverterPeakEfficiency_pct: 97.8,
+      inverterStandbyLoss_W: 35
+    },
+
+    equipment: {
+      pvArray: {
+        id: 'pv_array',
+        nameFa: 'آرایه فتوولتائیک پشت‌بام (۲۴ پنل، ۲ استرینگ ۵.۵kW)',
+        nameEn: 'Rooftop PV Array (24 Modules, 2 Strings x 5.5kW)',
+        type: 'solar_array',
+        presence: true,
+        manufacturer: 'Tier-1 Mono-PERC 460W',
+        strings: [
+          {
+            id: 'string_1',
+            nameFa: 'استرینگ خورشیدی شماره ۱ (۵۵۰۰ وات)',
+            modulesCount: 12,
+            ratedPower_W: 5500,
+            nominalVoc_V: 450,
+            nominalVmp_V: 370,
+            ports: canonicalProfileHyb1p5kwV1.equipment.pvArray.strings[0].ports
+          },
+          {
+            id: 'string_2',
+            nameFa: 'استرینگ خورشیدی شماره ۲ (۵۵۰۰ وات)',
+            modulesCount: 12,
+            ratedPower_W: 5500,
+            nominalVoc_V: 450,
+            nominalVmp_V: 370,
+            ports: canonicalProfileHyb1p5kwV1.equipment.pvArray.strings[1].ports
+          }
+        ]
+      },
+      dcCombinerBox: canonicalProfileHyb1p5kwV1.equipment.dcCombinerBox,
+      inverter: {
+        id: 'hybrid_inverter_10kw',
+        nameFa: 'اینورتر هایبرید ۱۰ کیلووات تک‌فاز (Dual MPPT)',
+        nameEn: '10kW Single-Phase Hybrid Inverter (Dual MPPT)',
+        type: 'hybrid_inverter',
+        presence: true,
+        ratedContinuousPower_W: 10000,
+        acRating_W: 10000,
+        mpptTrackers: 2,
+        internalArchitecture: {
+          mppt1: { id: 'INV_MPPT1', vMin_V: 150, vMax_V: 550, maxI_A: 25 },
+          mppt2: { id: 'INV_MPPT2', vMin_V: 150, vMax_V: 550, maxI_A: 25 },
+          dcLinkBus: { id: 'INV_DC_BUS', nominalV_V: 400 },
+          bidirectionalDcDc: { id: 'INV_DCDC_BAT', vNominal_V: 48, maxCurrent_A: 200, pMax_W: 8000 },
+          fullBridgeSpwm: { id: 'INV_SPWM_BRIDGE', acRatedV_V: 230, pMax_W: 10000 },
+          antiIslandingRelay: { id: 'KSEP', name: 'Anti-Islanding Grid Disconnect Relay', tripTime_ms: 20 },
+          neutralEarthBondRelay: { id: 'KNE', name: 'Off-grid N-PE Bonding Contactor', normClosedOffgrid: true },
+          rcmu: { id: 'RCMU', name: 'Residual Current Monitoring Unit', iDeltaN_mA: 30 }
+        },
+        ports: canonicalProfileHyb1p5kwV1.equipment.inverter.ports
+      },
+      batteryBank: {
+        present: true,
+        capacity_Wh: 10240
+      },
+      batteryStorage: {
+        id: 'battery_storage_10kwh',
+        nameFa: 'بانک ذخیره‌ساز لیتیوم آهن فسفات ۱۰.۲۴ کیلووات‌ساعت (LiFePO4 BESS)',
+        nameEn: '10.24kWh LiFePO4 Battery Energy Storage System (BESS)',
+        type: 'battery_storage',
+        presence: true,
+        chemistry: 'LiFePO4',
+        modulesCount: 4,
+        bankRatings: {
+          voltageNominal_V: 51.2,
+          voltageFloat_V: 54.4,
+          capacityTotal_Ah: 200,
+          energyTotal_Wh: 10240,
+          maxContinuousDischarge_A: 200,
+          maxChargePower_W: 5000,
+          maxDischargePower_W: 8000
+        },
+        bms: canonicalProfileHyb1p5kwV1.equipment.batteryStorage.bms
+      },
+      batteryDisconnect: canonicalProfileHyb1p5kwV1.equipment.batteryDisconnect,
+      earthingMet: canonicalProfileHyb1p5kwV1.equipment.earthingMet,
+      mainDistributionBoard: canonicalProfileHyb1p5kwV1.equipment.mainDistributionBoard,
+      epsDistributionBoard: canonicalProfileHyb1p5kwV1.equipment.epsDistributionBoard,
+      utilityService: canonicalProfileHyb1p5kwV1.equipment.utilityService,
+      nonCriticalLoads: {
+        id: 'non_critical_loads',
+        nameFa: 'بارهای عادی خانه (تهویه، شارژر، آبگرمکن)',
+        nameEn: 'Non-Critical House Loads',
+        type: 'load_cluster',
+        presence: true,
+        sheddableDuringBlackout: true,
+        nominalPower_W: 4400
+      },
+      criticalLoads: {
+        id: 'critical_loads',
+        nameFa: 'بارهای بحرانی و بدون وقفه',
+        nameEn: 'Critical Uninterruptible Loads',
+        type: 'load_cluster',
+        presence: true,
+        sheddableDuringBlackout: false,
+        nominalPower_W: 3000,
+        maxPermittedPower_W: 10400
+      }
+    },
+
+    connectivity: {
+      buses: {
+        'BUS-G': {
+          id: 'BUS-G',
+          nameFa: 'شینه توزیع شبکه AC تابلوی اصلی',
+          voltageNominal_V: 230,
+          currentRating_A: 80,
+          phases: ['L1'],
+          hasNeutral: true,
+          liveWhen: 'grid_available AND q0_closed',
+          fedBy: ['utility_incomer', 'inverter_grid_feed']
+        },
+        'DC-BUS': canonicalProfileHyb1p5kwV1.connectivity.buses['DC-BUS'],
+        'BUS-EPS': {
+          id: 'BUS-EPS',
+          nameFa: 'شینه تغذیه بارهای بحرانی',
+          voltageNominal_V: 230,
+          currentRating_A: 63,
+          liveWhen: '(sbyPosition === "I" AND inverter_eps_powered) OR (sbyPosition === "II" AND bus_g_alive)',
+          fedBy: ['inverter_eps_port', 'grid_bypass_feed']
+        },
+        'MET': canonicalProfileHyb1p5kwV1.connectivity.buses['MET']
+      },
+      circuits: canonicalProfileHyb1p5kwV1.connectivity.circuits,
+      interlocks: canonicalProfileHyb1p5kwV1.connectivity.interlocks
+    },
+
+    layout3D: {
+      room: canonicalProfileHyb1p5kwV1.layout3D.room,
+      enclosures: canonicalProfileHyb1p5kwV1.layout3D.enclosures,
+      cameraFraming: canonicalProfileHyb1p5kwV1.layout3D.cameraFraming,
+      cabling3D: {
+        ...canonicalProfileHyb1p5kwV1.layout3D.cabling3D,
+        pv1: { ...canonicalProfileHyb1p5kwV1.layout3D.cabling3D.pv1, ratedCapacity_W: 5500 },
+        pv2: { ...canonicalProfileHyb1p5kwV1.layout3D.cabling3D.pv2, ratedCapacity_W: 5500 },
+        battery: { ...canonicalProfileHyb1p5kwV1.layout3D.cabling3D.battery, ratedCapacity_W: 8000 },
+        inv_grid: { ...canonicalProfileHyb1p5kwV1.layout3D.cabling3D.inv_grid, ratedCapacity_W: 10000 },
+        inv_eps: { ...canonicalProfileHyb1p5kwV1.layout3D.cabling3D.inv_eps, ratedCapacity_W: 10000 }
+      }
+    },
+
+    sldMapping: canonicalProfileHyb1p5kwV1.sldMapping
+  });
+
+  // ============================================================================
+  // 5. APPROVED PROFILE: profile-off-1p-5kw-v1 (5 kW Single-Phase Off-Grid)
+  // ============================================================================
+  const profileOff1p5kwV1 = Object.freeze({
+    id: 'profile-off-1p-5kw-v1',
+    name: '۵ کیلووات تکفاز مستقل از شبکه Off-Grid',
+    nameEn: '5kW Single-Phase Off-Grid PV System',
+    version: '1.0.0',
+    schemaVersion: '1.0.0',
+    familyId: '1p-offgrid',
+    description: 'سامانه خورشیدی مستقل از شبکه ۵kW با باتری ذخیره‌ساز و ورودی ژنراتور اضطراری',
+
+    family: {
+      familyId: '1p-offgrid',
+      familyNameFa: 'مستقل از شبکه تک‌فاز (Off-Grid)',
+      familyNameEn: 'Single-Phase Off-Grid (up to 10kW)',
+      phaseCount: 1,
+      phases: ['L1'],
+      neutralPresent: true,
+      pePresent: true,
+      topology: 'off-grid',
+      earthingSystem: 'TN-S'
+    },
+
+    status: 'active',
+    sldRef: {
+      drawingId: 'SLD-OFF-01',
+      titleFa: 'نقشه تک‌خطی مستقل از شبکه ۵kW (SLD-OFF-01)',
+      standard: 'OFF-FA-001',
+      revision: 'Rev A',
+      date: '2026-09-14',
+      requiresOwnerRedraw: false
+    },
+
+    systemRatings: {
+      acRatedPower_W: 5000,
+      acMaxApparentPower_VA: 5500,
+      acNominalVoltage_V: 230,
+      acVoltageRange_V: { min: 207, max: 243 },
+      acNominalFrequency_Hz: 50.0,
+      acFrequencyRange_Hz: { min: 49.0, max: 51.0 },
+      acRatedCurrent_A: 21.7,
+      acMaxCurrent_A: 24.0,
+
+      dcRatedTotalPower_W: 5600,
+      dcStringCount: 2,
+      dcString1RatedPower_W: 2800,
+      dcString2RatedPower_W: 2800,
+      dcStringNominalVoc_V: 385,
+      dcStringNominalVmp_V: 315,
+      dcMpptVoltageRange_V: { min: 125, max: 500 },
+      dcMaxInputVoltage_V: 550,
+      dcMaxMpptCurrent_A: 15.0,
+      dcTempCoeffP_pctPerC: -0.38,
+      dcTempCoeffV_pctPerC: -0.28,
+
+      batteryPresent: true,
+      batteryType: 'LiFePO4',
+      batteryNominalVoltage_V: 51.2,
+      batteryWorkingVoltageRange_V: { min: 48.0, max: 57.6 },
+      batteryNominalCapacity_Ah: 100,
+      batteryNominalCapacity_Wh: 5120,
+      batteryMaxChargePower_W: 2500,
+      batteryMaxDischargePower_W: 4000,
+      batteryMaxContinuousCurrent_A: 100,
+      batteryMinSOC_pct: 10,
+      batteryReserveSOC_pct: 15,
+
+      epsRatedPower_W: 5000,
+      epsMaxOverloadPower_W: 5200,
+      epsNominalVoltage_V: 230,
+      epsNominalFrequency_Hz: 50.0,
+      epsTransferTime_ms: 0,
+      epsRcdSensitivity_mA: 30,
+
+      inverterPeakEfficiency_pct: 96.8,
+      inverterStandbyLoss_W: 30
+    },
+
+    equipment: {
+      pvArray: canonicalProfileHyb1p5kwV1.equipment.pvArray,
+      dcCombinerBox: canonicalProfileHyb1p5kwV1.equipment.dcCombinerBox,
+      inverter: {
+        id: 'offgrid_inverter',
+        nameFa: 'اینورتر مستقل از شبکه ۵ کیلووات تک‌فاز (Off-Grid Inverter)',
+        nameEn: '5kW Single-Phase Off-Grid Inverter',
+        type: 'offgrid_inverter',
+        presence: true,
+        ratedContinuousPower_W: 5000,
+        acRating_W: 5000,
+        mpptTrackers: 2,
+        internalArchitecture: canonicalProfileHyb1p5kwV1.equipment.inverter.internalArchitecture,
+        ports: {
+          pv1Input: canonicalProfileHyb1p5kwV1.equipment.inverter.ports.pv1Input,
+          pv2Input: canonicalProfileHyb1p5kwV1.equipment.inverter.ports.pv2Input,
+          batteryPort: canonicalProfileHyb1p5kwV1.equipment.inverter.ports.batteryPort,
+          epsPort: canonicalProfileHyb1p5kwV1.equipment.inverter.ports.epsPort,
+          genInputPort: { id: 'PORT_INV_GEN', type: 'ac', terminals: ['L_GEN', 'N_GEN', 'PE_GEN'] }
+        }
+      },
+      batteryBank: { present: true, capacity_Wh: 5120 },
+      batteryStorage: canonicalProfileHyb1p5kwV1.equipment.batteryStorage,
+      batteryDisconnect: canonicalProfileHyb1p5kwV1.equipment.batteryDisconnect,
+      earthingMet: canonicalProfileHyb1p5kwV1.equipment.earthingMet,
+      mainDistributionBoard: { presence: false, present: false },
+      epsDistributionBoard: canonicalProfileHyb1p5kwV1.equipment.epsDistributionBoard,
+      utilityService: {
+        id: 'generator_service',
+        nameFa: 'ورودی ژنراتور اضطراری (فاقد اتصال به شبکه سراسری)',
+        nameEn: 'Backup Diesel Generator Incomer',
+        type: 'generator_service',
+        presence: false,
+        present: false
+      },
+      nonCriticalLoads: { presence: false, present: false },
+      criticalLoads: {
+        id: 'ac_loads',
+        nameFa: 'بارهای اصلی ساختمان مستقل از شبکه',
+        nameEn: 'Off-Grid AC Loads',
+        type: 'load_cluster',
+        presence: true,
+        sheddableDuringBlackout: false,
+        nominalPower_W: 2500,
+        maxPermittedPower_W: 5200
+      }
+    },
+
+    connectivity: {
+      buses: {
+        'BUS-G': {
+          id: 'BUS-G',
+          present: false,
+          presence: false,
+          nameFa: 'شینه شبکه سراسری (فاقد اتصال شبکه - آف‌گرید)'
+        },
+        'DC-BUS': canonicalProfileHyb1p5kwV1.connectivity.buses['DC-BUS'],
+        'BUS-EPS': canonicalProfileHyb1p5kwV1.connectivity.buses['BUS-EPS'],
+        'MET': canonicalProfileHyb1p5kwV1.connectivity.buses['MET']
+      },
+      circuits: {
+        pv1_dc_string: canonicalProfileHyb1p5kwV1.connectivity.circuits.pv1_dc_string,
+        pv2_dc_string: canonicalProfileHyb1p5kwV1.connectivity.circuits.pv2_dc_string,
+        battery_dc_feeder: canonicalProfileHyb1p5kwV1.connectivity.circuits.battery_dc_feeder,
+        inverter_eps_feeder: canonicalProfileHyb1p5kwV1.connectivity.circuits.inverter_eps_feeder,
+        critical_loads_feeder: canonicalProfileHyb1p5kwV1.connectivity.circuits.critical_loads_feeder,
+        earthing_equipotential_network: canonicalProfileHyb1p5kwV1.connectivity.circuits.earthing_equipotential_network
+      },
+      interlocks: [
+        canonicalProfileHyb1p5kwV1.connectivity.interlocks[0],
+        canonicalProfileHyb1p5kwV1.connectivity.interlocks[2]
+      ]
+    },
+
+    layout3D: {
+      room: canonicalProfileHyb1p5kwV1.layout3D.room,
+      enclosures: {
+        rooftopPV: canonicalProfileHyb1p5kwV1.layout3D.enclosures.rooftopPV,
+        dcCombinerBox: canonicalProfileHyb1p5kwV1.layout3D.enclosures.dcCombinerBox,
+        hybridInverter: canonicalProfileHyb1p5kwV1.layout3D.enclosures.hybridInverter,
+        batteryRack: canonicalProfileHyb1p5kwV1.layout3D.enclosures.batteryRack,
+        batteryDisconnectBox: canonicalProfileHyb1p5kwV1.layout3D.enclosures.batteryDisconnectBox,
+        earthingMet: canonicalProfileHyb1p5kwV1.layout3D.enclosures.earthingMet,
+        epsDistributionBoard: canonicalProfileHyb1p5kwV1.layout3D.enclosures.epsDistributionBoard,
+        criticalLoadsBlock: canonicalProfileHyb1p5kwV1.layout3D.enclosures.criticalLoadsBlock
+      },
+      cameraFraming: canonicalProfileHyb1p5kwV1.layout3D.cameraFraming,
+      cabling3D: {
+        pv1: canonicalProfileHyb1p5kwV1.layout3D.cabling3D.pv1,
+        pv2: canonicalProfileHyb1p5kwV1.layout3D.cabling3D.pv2,
+        battery: canonicalProfileHyb1p5kwV1.layout3D.cabling3D.battery,
+        inv_eps: canonicalProfileHyb1p5kwV1.layout3D.cabling3D.inv_eps,
+        load_critical: canonicalProfileHyb1p5kwV1.layout3D.cabling3D.load_critical,
+        earthing: canonicalProfileHyb1p5kwV1.layout3D.cabling3D.earthing
+      }
+    },
+
+    sldMapping: {
+      schematicId: 'SLD-OFF-01',
+      standard: 'OFF-FA-001 Rev A',
+      symbolMapping: {
+        dc_iso_1: canonicalProfileHyb1p5kwV1.sldMapping.symbolMapping.dc_iso_1,
+        dc_iso_2: canonicalProfileHyb1p5kwV1.sldMapping.symbolMapping.dc_iso_2,
+        battery_qb: canonicalProfileHyb1p5kwV1.sldMapping.symbolMapping.battery_qb,
+        qe_mcb: canonicalProfileHyb1p5kwV1.sldMapping.symbolMapping.qe_mcb,
+        qo_mcb: canonicalProfileHyb1p5kwV1.sldMapping.symbolMapping.qo_mcb,
+        eps_rcd: canonicalProfileHyb1p5kwV1.sldMapping.symbolMapping.eps_rcd
+      },
+      telemetryAnchors: {
+        pvArray: canonicalProfileHyb1p5kwV1.sldMapping.telemetryAnchors.pvArray,
+        battery: canonicalProfileHyb1p5kwV1.sldMapping.telemetryAnchors.battery,
+        eps: canonicalProfileHyb1p5kwV1.sldMapping.telemetryAnchors.eps
+      },
+      flowOverlays: {
+        pv: canonicalProfileHyb1p5kwV1.sldMapping.flowOverlays.pv,
+        battery: canonicalProfileHyb1p5kwV1.sldMapping.flowOverlays.battery
+      }
+    }
+  });
+
+  // ============================================================================
+  // 6. APPROVED PROFILE: profile-hyb-3p-15kw-v1 (15 kW Three-Phase Hybrid)
+  // ============================================================================
+  const profileHyb3p15kwV1 = Object.freeze({
+    id: 'profile-hyb-3p-15kw-v1',
+    name: '۱۵ کیلووات سهفاز هایبرید (۳ فاز ۴۰۰ ولت)',
+    nameEn: '15kW Three-Phase Hybrid PV System with Battery Storage',
+    version: '1.0.0',
+    schemaVersion: '1.0.0',
+    familyId: '3p-hybrid',
+    description: 'سامانه استاندارد هیبرید سه‌فاز ۱۵kW (۴۰۰ ولت فاز به فاز / ۲۳۰ ولت فاز به نول) با ذخیره‌ساز باتری ولتاژ بالا',
+
+    family: {
+      familyId: '3p-hybrid',
+      familyNameFa: 'هیبرید سه‌فاز (۵ تا ۱۰۰ کیلووات)',
+      familyNameEn: 'Three-Phase Hybrid (5 to 100kW)',
+      phaseCount: 3,
+      phases: ['L1', 'L2', 'L3'],
+      neutralPresent: true,
+      pePresent: true,
+      topology: 'hybrid',
+      earthingSystem: 'TN-S'
+    },
+
+    status: 'active',
+    sldRef: {
+      drawingId: 'SLD-02',
+      titleFa: 'نقشه تک‌خطی سه‌فاز ۱۵kW (SLD-02)',
+      standard: 'HYB-3P-001',
+      revision: 'Rev B',
+      date: '2026-09-14',
+      requiresOwnerRedraw: false
+    },
+
+    systemRatings: {
+      acRatedPower_W: 15000,
+      acMaxApparentPower_VA: 16500,
+      acNominalVoltage_V: 400,
+      acLineToLineVoltage_V: 400,
+      acLineToNeutralVoltage_V: 230,
+      acVoltageRange_V: { min: 320, max: 440 },
+      acNominalFrequency_Hz: 50.0,
+      acFrequencyRange_Hz: { min: 47.5, max: 51.5 },
+      acRatedCurrent_A: 21.7,
+      acMaxCurrent_A: 24.0,
+
+      dcRatedTotalPower_W: 16500,
+      dcStringCount: 3,
+      dcString1RatedPower_W: 5500,
+      dcString2RatedPower_W: 5500,
+      dcString3RatedPower_W: 5500,
+      dcStringNominalVoc_V: 650,
+      dcStringNominalVmp_V: 540,
+      dcMpptVoltageRange_V: { min: 200, max: 850 },
+      dcMaxInputVoltage_V: 1000,
+      dcMaxMpptCurrent_A: 26.0,
+      dcTempCoeffP_pctPerC: -0.38,
+      dcTempCoeffV_pctPerC: -0.28,
+
+      batteryPresent: true,
+      batteryType: 'LiFePO4 High-Voltage',
+      batteryNominalVoltage_V: 307.2,
+      batteryWorkingVoltageRange_V: { min: 270, max: 345 },
+      batteryNominalCapacity_Ah: 50,
+      batteryNominalCapacity_Wh: 15360,
+      batteryMaxChargePower_W: 10000,
+      batteryMaxDischargePower_W: 15000,
+      batteryMaxContinuousCurrent_A: 50,
+      batteryMinSOC_pct: 10,
+      batteryReserveSOC_pct: 15,
+
+      epsRatedPower_W: 15000,
+      epsMaxOverloadPower_W: 16500,
+      epsNominalVoltage_V: 400,
+      epsNominalFrequency_Hz: 50.0,
+      epsTransferTime_ms: 10,
+      epsRcdSensitivity_mA: 30,
+
+      inverterPeakEfficiency_pct: 98.2,
+      inverterStandbyLoss_W: 60
+    },
+
+    equipment: {
+      pvArray: {
+        id: 'pv_array_3p',
+        nameFa: 'آرایه خورشیدی سه‌فاز (۳ استرینگ ۵.۵kW)',
+        nameEn: 'Three-Phase PV Array (3 Strings x 5.5kW)',
+        type: 'solar_array',
+        presence: true,
+        manufacturer: 'Tier-1 Mono-PERC 500W',
+        strings: [
+          { id: 'string_1', modulesCount: 11, ratedPower_W: 5500, nominalVoc_V: 650, nominalVmp_V: 540, ports: canonicalProfileHyb1p5kwV1.equipment.pvArray.strings[0].ports },
+          { id: 'string_2', modulesCount: 11, ratedPower_W: 5500, nominalVoc_V: 650, nominalVmp_V: 540, ports: canonicalProfileHyb1p5kwV1.equipment.pvArray.strings[1].ports },
+          { id: 'string_3', modulesCount: 11, ratedPower_W: 5500, nominalVoc_V: 650, nominalVmp_V: 540, ports: canonicalProfileHyb1p5kwV1.equipment.pvArray.strings[0].ports }
+        ]
+      },
+      dcCombinerBox: canonicalProfileHyb1p5kwV1.equipment.dcCombinerBox,
+      inverter: {
+        id: 'hybrid_inverter_3p',
+        nameFa: 'اینورتر هایبرید ۱۵ کیلووات سه‌فاز (Three-Phase Hybrid)',
+        nameEn: '15kW Three-Phase Hybrid Inverter',
+        type: '3p_hybrid_inverter',
+        presence: true,
+        ratedContinuousPower_W: 15000,
+        acRating_W: 15000,
+        mpptTrackers: 2,
+        internalArchitecture: canonicalProfileHyb1p5kwV1.equipment.inverter.internalArchitecture,
+        ports: {
+          ...canonicalProfileHyb1p5kwV1.equipment.inverter.ports,
+          gridPort: { id: 'PORT_INV_GRID_3P', type: 'ac', terminals: ['L1_GRID', 'L2_GRID', 'L3_GRID', 'N_GRID', 'PE_GRID'] },
+          epsPort: { id: 'PORT_INV_EPS_3P', type: 'ac', terminals: ['L1_EPS', 'L2_EPS', 'L3_EPS', 'N_EPS', 'PE_EPS'] }
+        }
+      },
+      batteryBank: { present: true, capacity_Wh: 15360 },
+      batteryStorage: {
+        id: 'battery_storage_hv',
+        nameFa: 'بانک باتری ولتاژ بالا ۱۵.۳۶ کیلووات‌ساعت (High-Voltage BESS)',
+        nameEn: '15.36kWh High-Voltage LiFePO4 Battery System',
+        type: 'battery_storage',
+        presence: true,
+        chemistry: 'LiFePO4 (96S)',
+        modulesCount: 3,
+        bankRatings: {
+          voltageNominal_V: 307.2,
+          voltageFloat_V: 326.4,
+          capacityTotal_Ah: 50,
+          energyTotal_Wh: 15360,
+          maxContinuousDischarge_A: 50,
+          maxChargePower_W: 10000,
+          maxDischargePower_W: 15000
+        },
+        bms: canonicalProfileHyb1p5kwV1.equipment.batteryStorage.bms
+      },
+      batteryDisconnect: canonicalProfileHyb1p5kwV1.equipment.batteryDisconnect,
+      earthingMet: canonicalProfileHyb1p5kwV1.equipment.earthingMet,
+      mainDistributionBoard: canonicalProfileHyb1p5kwV1.equipment.mainDistributionBoard,
+      epsDistributionBoard: canonicalProfileHyb1p5kwV1.equipment.epsDistributionBoard,
+      utilityService: {
+        id: 'utility_service_3p',
+        nameFa: 'انشعاب شبکه توزیع برق منطقه‌ای سه‌فاز (۴۰۰ ولت)',
+        nameEn: 'Three-Phase 400V Utility Service Cutout',
+        type: 'utility_service',
+        presence: true,
+        phaseCount: 3,
+        nominalVoltage_V: 400,
+        serviceFuseRating_A: 63
+      },
+      nonCriticalLoads: {
+        id: 'non_critical_loads_3p',
+        nameFa: 'بارهای عادی سه‌فاز متعادل (۶.۶ کیلووات)',
+        nameEn: 'Three-Phase Balanced House Loads',
+        type: 'load_cluster',
+        presence: true,
+        sheddableDuringBlackout: true,
+        nominalPower_W: 6600
+      },
+      criticalLoads: {
+        id: 'critical_loads_3p',
+        nameFa: 'بارهای بحرانی سه‌فاز (۴.۵ کیلووات)',
+        nameEn: 'Three-Phase Critical Uninterruptible Loads',
+        type: 'load_cluster',
+        presence: true,
+        sheddableDuringBlackout: false,
+        nominalPower_W: 4500,
+        maxPermittedPower_W: 16500
+      }
+    },
+
+    connectivity: {
+      buses: {
+        'BUS-G': {
+          id: 'BUS-G',
+          nameFa: 'شینه توزیع شبکه سه‌فاز AC (۴۰۰ ولت)',
+          voltageNominal_V: 400,
+          currentRating_A: 40,
+          phases: ['L1', 'L2', 'L3'],
+          hasNeutral: true,
+          liveWhen: 'grid_available AND q0_closed',
+          fedBy: ['utility_incomer', 'inverter_grid_feed']
+        },
+        'DC-BUS': {
+          id: 'DC-BUS',
+          nameFa: 'باس DC داخلی اینورتر',
+          voltageNominal_V: 750,
+          liveWhen: 'pv_power > 20W OR battery_healthy OR grid_available',
+          fedBy: ['mppt1', 'mppt2', 'dcdc_battery', 'ac_grid_rectifier']
+        },
+        'BUS-EPS': {
+          id: 'BUS-EPS',
+          nameFa: 'شینه تغذیه بارهای بحرانی سه‌فاز (۴۰۰ ولت)',
+          voltageNominal_V: 400,
+          currentRating_A: 32,
+          phases: ['L1', 'L2', 'L3'],
+          hasNeutral: true,
+          liveWhen: '(sbyPosition === "I" AND inverter_eps_powered) OR (sbyPosition === "II" AND bus_g_alive)',
+          fedBy: ['inverter_eps_port', 'grid_bypass_feed']
+        },
+        'MET': canonicalProfileHyb1p5kwV1.connectivity.buses['MET']
+      },
+      circuits: canonicalProfileHyb1p5kwV1.connectivity.circuits,
+      interlocks: canonicalProfileHyb1p5kwV1.connectivity.interlocks
+    },
+
+    layout3D: {
+      room: canonicalProfileHyb1p5kwV1.layout3D.room,
+      enclosures: canonicalProfileHyb1p5kwV1.layout3D.enclosures,
+      cameraFraming: canonicalProfileHyb1p5kwV1.layout3D.cameraFraming,
+      cabling3D: {
+        ...canonicalProfileHyb1p5kwV1.layout3D.cabling3D,
+        pv1: { ...canonicalProfileHyb1p5kwV1.layout3D.cabling3D.pv1, ratedCapacity_W: 5500 },
+        pv2: { ...canonicalProfileHyb1p5kwV1.layout3D.cabling3D.pv2, ratedCapacity_W: 5500 },
+        battery: { ...canonicalProfileHyb1p5kwV1.layout3D.cabling3D.battery, ratedCapacity_W: 15000 },
+        inv_grid: { ...canonicalProfileHyb1p5kwV1.layout3D.cabling3D.inv_grid, ratedCapacity_W: 15000 },
+        inv_eps: { ...canonicalProfileHyb1p5kwV1.layout3D.cabling3D.inv_eps, ratedCapacity_W: 15000 }
+      }
+    },
+
+    sldMapping: canonicalProfileHyb1p5kwV1.sldMapping
+  });
+
+  // ============================================================================
+  // 7. SYSTEM PROFILES REGISTRY & EXTENSION API
   // ============================================================================
 
   const registry = new Map();
@@ -1203,8 +2046,12 @@
     return true;
   }
 
-  // Auto-register canonical reference profile
+  // Auto-register canonical reference profile & approved family profiles
   registerProfile(canonicalProfileHyb1p5kwV1);
+  registerProfile(profileOng1p5kwV1);
+  registerProfile(profileHyb1p10kwV1);
+  registerProfile(profileOff1p5kwV1);
+  registerProfile(profileHyb3p15kwV1);
 
   const SystemProfiles = Object.freeze({
     SCHEMA_VERSION: SystemProfileSchema.version,
@@ -1216,7 +2063,11 @@
     getApprovedConfigurations: (familyId) => {
       return Array.from(registry.values()).filter(p => p.familyId === familyId && p.status === 'active');
     },
-    CANONICAL_HYBRID_1P_5KW: canonicalProfileHyb1p5kwV1
+    CANONICAL_HYBRID_1P_5KW: canonicalProfileHyb1p5kwV1,
+    PROFILE_ONG_1P_5KW: profileOng1p5kwV1,
+    PROFILE_HYB_1P_10KW: profileHyb1p10kwV1,
+    PROFILE_OFF_1P_5KW: profileOff1p5kwV1,
+    PROFILE_HYB_3P_15KW: profileHyb3p15kwV1
   });
 
   // Clean Browser Export
@@ -1231,7 +2082,11 @@
       SystemProfiles,
       SystemProfileSchema,
       validateSystemProfile,
-      canonicalProfileHyb1p5kwV1
+      canonicalProfileHyb1p5kwV1,
+      profileOng1p5kwV1,
+      profileHyb1p10kwV1,
+      profileOff1p5kwV1,
+      profileHyb3p15kwV1
     };
   }
 })();
